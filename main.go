@@ -1,42 +1,49 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
-type result struct {
-	status  int
-	data    []byte
-	headers http.Header
+type config struct {
+	Name string `yml:"name"`
+	Port string `yml:"port"`
 }
 
-type request struct {
-	method  string
-	url     string
+type req struct {
+	url     *url.URL
+	body    []byte
 	headers http.Header
-	body    io.ReadCloser
+	status  int
+	method  string
 }
+
+var cache []req
 
 func readBodyToBytes(res io.ReadCloser) []byte {
-	body, err := ioutil.ReadAll(res)
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(res)
+	return buf.Bytes()
+}
+
+func formatURL(dirtyURL string) *url.URL {
+	s := regexp.MustCompile(`(?:/query\?q=)(.{0,})`)
+	r := string(s.ReplaceAll([]byte(dirtyURL), []byte("$1")))
+	formattedURL, err := url.Parse(r)
 	if err != nil {
 		panic(err)
 	}
-	return body
-}
-
-func formatURL(url string) string {
-	r := strings.Replace(url, "/query?q=", "", 1)
-	if strings.Contains(r, "?") {
-		return r
-	}
-	r = strings.Replace(r, "&", "?", 1)
-	return r
+	return formattedURL
 }
 
 func parseToUnknownJSON(b []byte) map[string]interface{} {
@@ -48,61 +55,109 @@ func parseToUnknownJSON(b []byte) map[string]interface{} {
 	return m
 }
 
-func fetch(r request) result {
-	cl := http.Client{}
-	req, err := http.NewRequest(r.method, r.url, r.body)
+func getPreRequest(url *url.URL, r *http.Request) bool {
+	fmt.Println(url, r.Method)
+	matched, err := regexp.Match("posts", []byte(url.String()))
 	if err != nil {
 		panic(err)
 	}
-	addResHeaders(r.headers, req.Header)
-	req.Header.Add("Content-Type", "application/json;charset=UTF-8")
-	fmt.Println(string(readBodyToBytes(req.Body)))
-
-	res, err := cl.Do(req)
-	if err != nil {
-		panic(err)
+	if matched {
+		return true
 	}
-
-	body := readBodyToBytes(res.Body)
-
-	return result{
-		status:  res.StatusCode,
-		data:    body,
-		headers: res.Header,
-	}
+	return false
 }
 
-func addResHeaders(newHeaders http.Header, reqHeaders http.Header) {
-	for i, s := range newHeaders {
-		if i != "Content-Length" && i != "Cookie" {
-			reqHeaders.Set(i, s[0])
+func findInCache(url *url.URL) (req, bool) {
+	for _, c := range cache {
+		if strings.Compare(c.url.String(), url.String()) >= 0 {
+			return c, true
 		}
 	}
+	return req{}, false
+}
+
+func postRequest(res *http.Response) error {
+	fmt.Println("caching")
+
+	buf, _ := ioutil.ReadAll(res.Body)
+	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
+	rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
+
+	newC := req{
+		url:     res.Request.URL,
+		body:    readBodyToBytes(rdr1),
+		headers: res.Header,
+		method:  res.Request.Method,
+		status:  res.StatusCode,
+	}
+	cache = append(cache, newC)
+	res.Body = rdr2
+	fmt.Println(res.Status, res.StatusCode)
+	return nil
 }
 
 func query(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-AuthToken, Content-Length, X-Requested-With, X_Auth_Credentials, X-Hub-Version, Cko-Hub-Action")
-		w.WriteHeader(http.StatusNoContent)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH")
+		w.Header().Set("Access-Control-Allow-Headers", "*, Origin, X-Requested-With, Content-Type, Accept")
 		return
 	}
-	toMake := request{
-		url:     formatURL(r.URL.String()),
-		method:  r.Method,
-		headers: r.Header,
-		body:    r.Body,
+
+	url := formatURL(r.URL.String())
+
+	// if returnEarly := getPreRequest(url, r); returnEarly {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	return
+	// }
+	fmt.Println(url)
+	data, found := findInCache(url)
+
+	if found == true {
+		fmt.Println("found in cache sending cache")
+		for i, h := range data.headers {
+			w.Header().Set(i, strings.Join(h, " "))
+		}
+		w.WriteHeader(data.status)
+		w.Write(data.body)
+		return
 	}
 
-	res := fetch(toMake)
-	addResHeaders(res.headers, w.Header())
-	w.WriteHeader(res.status)
-	w.Write(res.data)
+	fmt.Println("no entry fetching from server")
+
+	reverseProxy := httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = url.Scheme
+			req.URL.Host = url.Host
+			req.URL.Path = url.Path
+			req.Host = url.Host
+			req.URL.RawQuery = url.RawQuery
+		},
+		ModifyResponse: postRequest,
+	}
+
+	reverseProxy.ServeHTTP(w, r)
+
+}
+
+func readConfig() (*config, error) {
+	file, _ := ioutil.ReadFile("./config.yml")
+	config := &config{}
+	err := yaml.Unmarshal([]byte(file), &config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 func main() {
+	config, err := readConfig()
+	if err != nil {
+		panic("Config unreadable")
+	}
 	http.HandleFunc("/query", query)
-	http.ListenAndServe(":8090", nil)
+	http.ListenAndServe(":"+config.Port, nil)
+
+	fmt.Println("listing on 127.0.0.1:" + config.Port)
 }
