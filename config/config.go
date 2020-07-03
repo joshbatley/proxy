@@ -8,8 +8,9 @@ import (
 
 // Config - config file structure
 type Config struct {
-	Name string `yml:"name"`
-	Port string `yml:"port"`
+	Name   string `yml:"name"`
+	Port   string `yml:"port"`
+	DBFile string `yml:"DBFile"`
 }
 
 // Load - Read from file location

@@ -1,25 +1,27 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
-	"goproxy/config"
-	"goproxy/query"
+	"github.com/gorilla/mux"
+	"github.com/joshbatley/proxy/client"
+	"github.com/joshbatley/proxy/config"
 )
 
 func main() {
 	config, err := config.Load("./config.yml")
+	r := mux.NewRouter()
 
 	if err != nil {
 		panic("Config unreadable")
 	}
 
-	// Set up DB
+	spa := client.SpaHandler{StaticPath: "./webapp/build", IndexPath: "index.html"}
+	r.PathPrefix("/config").Handler(spa)
 
-	http.HandleFunc("/query", query.Serve)
+	http.Handle("/", r)
+	log.Println("Listing on localhosts:" + config.Port)
+	http.ListenAndServe("localhost:"+config.Port, nil)
 
-	fmt.Println("listing on 127.0.0.1:" + config.Port)
-
-	http.ListenAndServe(":"+config.Port, nil)
 }

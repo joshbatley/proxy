@@ -1,11 +1,12 @@
 package query
 
 import (
-	"fmt"
-	"goproxy/utils"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+
+	"github.com/joshbatley/proxy/utils"
 )
 
 var cache []Req
@@ -36,7 +37,7 @@ func Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("no entry fetching from server")
+	log.Println("no entry fetching from server")
 
 	reverseProxy := httputil.ReverseProxy{
 		Director:       director(url),

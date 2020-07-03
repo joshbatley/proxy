@@ -2,9 +2,9 @@ package query
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -22,7 +22,7 @@ type Req struct {
 
 // GetPreResponse -
 func getPreResponse(url *url.URL, r *http.Request, w http.ResponseWriter) bool {
-	fmt.Println(url, r.Method)
+	log.Println(url, r.Method)
 	matched, err := regexp.Match("posts", []byte(url.String()))
 	if err != nil {
 		panic(err)
@@ -39,7 +39,7 @@ func getPreResponse(url *url.URL, r *http.Request, w http.ResponseWriter) bool {
 // ModifyResponse -
 func modifyResponse(cache []Req) func(res *http.Response) error {
 	return func(res *http.Response) error {
-		fmt.Println("caching")
+		log.Println("caching")
 
 		buf, _ := ioutil.ReadAll(res.Body)
 		rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
@@ -54,7 +54,7 @@ func modifyResponse(cache []Req) func(res *http.Response) error {
 		}
 		cache = append(cache, newC)
 		res.Body = rdr2
-		fmt.Println(res.Status, res.StatusCode)
+		log.Println(res.Status, res.StatusCode)
 		return nil
 	}
 }
@@ -74,7 +74,7 @@ func handleOptions(w http.ResponseWriter, m string) bool {
 // SendCache -
 func sendCache(url *url.URL, w http.ResponseWriter, cache []Req) bool {
 	if data, found := findInCache(url.String(), cache); found == true {
-		fmt.Println("found in cache sending cache")
+		log.Println("found in cache sending cache")
 		for i, h := range data.Headers {
 			w.Header().Set(i, strings.Join(h, " "))
 		}
