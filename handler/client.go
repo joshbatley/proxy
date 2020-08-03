@@ -1,4 +1,4 @@
-package client
+package handler
 
 import (
 	"log"
@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// Serve -
-func Serve(w http.ResponseWriter, r *http.Request) {
+// ClientServe - Serve a webapp
+func ClientServe(w http.ResponseWriter, r *http.Request) {
 	StaticPath := "./webapp/build"
 	IndexPath := "index.html"
 

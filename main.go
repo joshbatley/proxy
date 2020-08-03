@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-
-	"github.com/joshbatley/proxy/client"
 	"github.com/joshbatley/proxy/config"
-	"github.com/joshbatley/proxy/query"
+	"github.com/joshbatley/proxy/database"
+	"github.com/joshbatley/proxy/handler"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -19,11 +19,11 @@ func main() {
 	}
 
 	// DB setup
+	database.Conn()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/config", client.Serve)
-	r.HandleFunc("/query", query.Serve)
-
+	r.HandleFunc("/config", handler.ClientServe)
+	r.HandleFunc("/query", handler.QueryServe)
 	http.Handle("/", r)
 
 	log.Println("Listing on localhosts:" + config.Port)
