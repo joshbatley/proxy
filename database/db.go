@@ -24,7 +24,8 @@ const cacheTableSQL = `
 		headers TEXT,
 		body BLOB,
 		status INTEGER,
-		method TEXT
+		method TEXT,
+		dateTime INTEGER
 	);
 `
 

@@ -12,23 +12,9 @@ import (
 	"regexp"
 	"strings"
 
-	database "github.com/joshbatley/proxy/database"
+	"github.com/joshbatley/proxy/database"
 	"github.com/joshbatley/proxy/def"
 )
-
-// FormatURL -
-func FormatURL(u string) *url.URL {
-	s := regexp.MustCompile(`(?:/query\?q=)(.{0,})`)
-	r := string(s.ReplaceAll([]byte(u), []byte("$1")))
-
-	formattedURL, err := url.Parse(r)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return formattedURL
-}
 
 type res struct {
 	URL     string
@@ -148,10 +134,6 @@ func ModifyResponse(res *http.Response) error {
 func SendCache(url *url.URL, w http.ResponseWriter, cache []def.Record) bool {
 	if data, found := findInCache(url.String(), cache); found == true {
 		log.Println("found in cache sending cache")
-
-		// for i, h := range data.Headers {
-		// 	w.Header().Set(i, strings.Join(h, " "))
-		// }
 
 		w.WriteHeader(data.Status)
 		w.Write(data.Body)
