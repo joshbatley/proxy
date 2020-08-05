@@ -17,7 +17,7 @@ type CacheRepository struct {
 type Cache struct {
 	Status int
 	URL    string
-	// Returns Headers as 'foo=[bar,baz];'
+	// Returns Headers as 'foo=bar; baz, other \n'
 	Header string
 	Body   []byte
 }

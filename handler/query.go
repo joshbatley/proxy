@@ -58,7 +58,7 @@ func (q *QueryHandler) SaveReponse(res *http.Response) error {
 // SendCache -
 func (q *QueryHandler) sendCache(d repository.Cache, w http.ResponseWriter) {
 	for _, i := range strings.Split(d.Header, "\n") {
-		h := strings.Split(i, "=")
+		h := strings.Split(i, "|")
 		if len(h) >= 2 {
 			k := h[0]
 			v := h[1]
