@@ -3,10 +3,10 @@ package handler
 import (
 	"bytes"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/joshbatley/proxy/domain"
 	"github.com/joshbatley/proxy/repository"
@@ -57,8 +57,14 @@ func (q *QueryHandler) SaveReponse(res *http.Response) error {
 
 // SendCache -
 func (q *QueryHandler) sendCache(d repository.Cache, w http.ResponseWriter) {
-	log.Println("found in cache sending cache")
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	for _, i := range strings.Split(d.Header, "\n") {
+		h := strings.Split(i, "=")
+		if len(h) >= 2 {
+			k := h[0]
+			v := h[1]
+			w.Header().Set(k, v)
+		}
+	}
 	w.WriteHeader(d.Status)
 	w.Write(d.Body)
 }

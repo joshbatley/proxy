@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // Record - Request Data struct
@@ -17,7 +18,7 @@ type Record struct {
 	Method  string
 }
 
-// URLString - Returns url as string
+// URLString - Returns url as strin
 func (r *Record) URLString() string {
 	return r.URL.String()
 }
@@ -26,7 +27,7 @@ func (r *Record) URLString() string {
 func (r *Record) HeadersToString() string {
 	b := new(bytes.Buffer)
 	for key, value := range r.Headers {
-		fmt.Fprintf(b, "%s=%s;\n", key, value)
+		fmt.Fprintf(b, "%s=%s\n", key, strings.Join(value, " "))
 	}
 
 	return b.String()

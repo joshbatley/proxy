@@ -3,14 +3,13 @@ package database
 import (
 	"database/sql"
 	"log"
-	"os"
 	"time"
 
 	"github.com/joshbatley/proxy/domain"
 )
 
 const cacheTableSQL = `
-	CREATE TABLE cache(
+	CREATE TABLE IF NOT EXISTS cache(
 		id INTEGER NOT NULL PRIMARY KEY,
 		collection TEXT NOT NULL,
 		url TEXT NOT NULL,
@@ -25,7 +24,7 @@ const cacheTableSQL = `
 //		FOREIGN KEY(collection) REFERENCES collections(id)
 
 const rulesTableSQL = `
-	CREATE TABLE rules(
+	CREATE TABLE IF NOT EXISTS rules(
 		id INTEGER NOT NULL PRIMARY KEY,
 		collection INTEGER,
 		pattern TEXT NOT NULL,
@@ -40,7 +39,7 @@ var db *sql.DB
 
 // Conn -
 func Conn() *sql.DB {
-	os.Remove("./storage.db")
+	// os.Remove("./storage.db")
 
 	conn, err := sql.Open("sqlite3", "./storage.db")
 	if err != nil {

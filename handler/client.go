@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// ClientServe - Serve a webapp
+// ClientServe has the correct rules a SPA
 func ClientServe(w http.ResponseWriter, r *http.Request) {
 	StaticPath := "./webapp/build"
 	IndexPath := "index.html"
