@@ -1,8 +1,9 @@
-package def
+package domain
 
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -35,4 +36,19 @@ func (r *Record) HeadersToString() string {
 func (r *Record) StringToHeader(str string) {
 	// Split by semicolon, values by array
 	//r.Headers.Set(key string, value string)
+}
+
+// NewRecord -
+func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string) Record {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(b)
+
+	return Record{
+		URL:     u,
+		Body:    buf.Bytes(),
+		Headers: h,
+		Status:  s,
+		Method:  m,
+	}
+
 }

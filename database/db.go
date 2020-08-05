@@ -4,28 +4,21 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"time"
 
-	"github.com/joshbatley/proxy/def"
+	"github.com/joshbatley/proxy/domain"
 )
-
-const collectionTableSQL = `
-	CREATE TABLE collections(
-		id INTEGER NOT NULL PRIMARY KEY,
-		name TEXT,
-		baseurl TEXT
-	);
-`
 
 const cacheTableSQL = `
 	CREATE TABLE cache(
 		id INTEGER NOT NULL PRIMARY KEY,
-		collection INTEGER,
+		collection TEXT NOT NULL,
 		url TEXT NOT NULL,
 		headers TEXT,
 		body BLOB,
 		status INTEGER,
 		method TEXT,
-		dateTime INTEGER
+		datetime INTEGER
 	);
 `
 
@@ -39,14 +32,14 @@ const rulesTableSQL = `
 		cache INTEGER,
 		expiry INTEGER,
 		offlinecache INTEGER,
-		FOREIGN KEY(collection) REFERENCES collections(id)
+		FOREIGN KEY(collection) REFERENCES cache(collection)
 	);
 `
 
 var db *sql.DB
 
 // Conn -
-func Conn() {
+func Conn() *sql.DB {
 	os.Remove("./storage.db")
 
 	conn, err := sql.Open("sqlite3", "./storage.db")
@@ -59,15 +52,12 @@ func Conn() {
 	}
 
 	setup()
+
+	return db
 }
 
 func setup() {
-	_, err := db.Exec(collectionTableSQL)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	_, err = db.Exec(cacheTableSQL)
+	_, err := db.Exec(cacheTableSQL)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -78,28 +68,18 @@ func setup() {
 	}
 }
 
-func Query() {
-	// db.Query(query string, args ...interface{})
-	// row := db.QueryRow("SELECT url, body, headers, status, method FROM cache WHERE url = '?'", url.String())
-	// err := row.Scan(&data.URL, &data.Body, &data.Headers, &data.Status, &data.Method)
-	// if err == (sql.ErrNoRows) {
-	// 	log.Println("no row")
-	// 	return false
-	// }
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
-}
-
-// Insert
-func Insert(r def.Record) {
+// Insert -
+func Insert(r domain.Record) {
 	tx, _ := db.Begin()
-	stmt, _ := tx.Prepare(`INSERT INTO cache (url, headers, body, status, method) values (?,?,?,?,?)`)
+	stmt, _ := tx.Prepare(`INSERT INTO cache (collection, url, headers, body, status, method, datetime) values (?,?,?,?,?,?, ?)`)
 
-	_, err := stmt.Exec(r.URLString(), r.HeadersToString(), r.Body, r.Status, r.Method)
+	_, err := stmt.Exec(r.URL.Host, r.URLString(), r.HeadersToString(), r.Body, r.Status, r.Method, time.Now())
 	if err != nil {
 		panic(err)
 	}
-	tx.Commit()
+	if err = tx.Commit(); err != nil {
+		log.Panicln(err)
+	} else {
+		log.Println("Saving", r.URL.String())
+	}
 }

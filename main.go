@@ -8,6 +8,7 @@ import (
 	"github.com/joshbatley/proxy/config"
 	"github.com/joshbatley/proxy/database"
 	"github.com/joshbatley/proxy/handler"
+	"github.com/joshbatley/proxy/repository"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -19,11 +20,18 @@ func main() {
 	}
 
 	// DB setup
-	database.Conn()
+	db := database.Conn()
+	cr := repository.CacheRepository{
+		Database: db,
+	}
+
+	q := handler.QueryHandler{
+		CacheRepository: &cr,
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/config", handler.ClientServe)
-	r.HandleFunc("/query", handler.QueryServe)
+	r.HandleFunc("/query", q.Serve)
 	http.Handle("/", r)
 
 	log.Println("Listing on localhosts:" + config.Port)
