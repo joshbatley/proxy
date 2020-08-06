@@ -7,27 +7,30 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Record - Request Data struct
 type Record struct {
-	URL     *url.URL
-	Body    []byte
-	Headers http.Header
-	Status  int
-	Method  string
+	URL        string
+	Body       []byte
+	Headers    string
+	Status     int
+	Method     string
+	Datetime   time.Time
+	Collection string
 }
 
 // URLString - Returns url as strin
-func (r *Record) URLString() string {
-	return r.URL.String()
-}
+// func (r *Record) URLString() string {
+// 	return r.URL.String()
+// }
 
 // HeadersToString - Returns Headers as 'foo=[bar,baz];'
-func (r *Record) HeadersToString() string {
+func HeadersToString(h http.Header) string {
 	b := new(bytes.Buffer)
-	for key, value := range r.Headers {
-		fmt.Fprintf(b, "%s|%s\n", key, strings.Join(value, " "))
+	for k, v := range h {
+		fmt.Fprintf(b, "%s|%s\n", k, strings.Join(v, " "))
 	}
 
 	return b.String()
@@ -45,11 +48,13 @@ func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string) Reco
 	buf.ReadFrom(b)
 
 	return Record{
-		URL:     u,
-		Body:    buf.Bytes(),
-		Headers: h,
-		Status:  s,
-		Method:  m,
+		URL:        u.String(),
+		Body:       buf.Bytes(),
+		Headers:    HeadersToString(h),
+		Status:     s,
+		Method:     m,
+		Datetime:   time.Now(),
+		Collection: "",
 	}
 
 }

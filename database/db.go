@@ -1,14 +1,13 @@
 package database
 
 import (
-	"database/sql"
 	"log"
-	"time"
 
-	"github.com/joshbatley/proxy/domain"
+	"github.com/jmoiron/sqlx"
 )
 
-const cacheTableSQL = `
+const (
+	cacheTableSQL = `
 	CREATE TABLE IF NOT EXISTS cache(
 		id INTEGER NOT NULL PRIMARY KEY,
 		collection TEXT NOT NULL,
@@ -18,12 +17,8 @@ const cacheTableSQL = `
 		status INTEGER,
 		method TEXT,
 		datetime INTEGER
-	);
-`
-
-//		FOREIGN KEY(collection) REFERENCES collections(id)
-
-const rulesTableSQL = `
+	);`
+	rulesTableSQL = `
 	CREATE TABLE IF NOT EXISTS rules(
 		id INTEGER NOT NULL PRIMARY KEY,
 		collection INTEGER,
@@ -32,16 +27,16 @@ const rulesTableSQL = `
 		expiry INTEGER,
 		offlinecache INTEGER,
 		FOREIGN KEY(collection) REFERENCES cache(collection)
-	);
-`
+	);`
+)
 
-var db *sql.DB
+var db *sqlx.DB
 
 // Conn -
-func Conn() *sql.DB {
+func Conn() *sqlx.DB {
 	// os.Remove("./storage.db")
 
-	conn, err := sql.Open("sqlite3", "./storage.db")
+	conn, err := sqlx.Open("sqlite3", "./storage.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,21 +59,5 @@ func setup() {
 	_, err = db.Exec(rulesTableSQL)
 	if err != nil {
 		log.Panic(err)
-	}
-}
-
-// Insert -
-func Insert(r domain.Record) {
-	tx, _ := db.Begin()
-	stmt, _ := tx.Prepare(`INSERT INTO cache (collection, url, headers, body, status, method, datetime) values (?,?,?,?,?,?, ?)`)
-
-	_, err := stmt.Exec(r.URL.Host, r.URLString(), r.HeadersToString(), r.Body, r.Status, r.Method, time.Now())
-	if err != nil {
-		panic(err)
-	}
-	if err = tx.Commit(); err != nil {
-		log.Panicln(err)
-	} else {
-		log.Println("Saving", r.URL.String())
 	}
 }

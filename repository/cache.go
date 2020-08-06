@@ -1,16 +1,13 @@
 package repository
 
 import (
-	"database/sql"
-	"log"
-
-	"github.com/joshbatley/proxy/database"
+	"github.com/jmoiron/sqlx"
 	"github.com/joshbatley/proxy/domain"
 )
 
 // CacheRepository -
 type CacheRepository struct {
-	Database *sql.DB
+	Database *sqlx.DB
 }
 
 // Cache -
@@ -18,24 +15,46 @@ type Cache struct {
 	Status int
 	URL    string
 	// Returns Headers as 'foo=bar; baz, other \n'
-	Header string
-	Body   []byte
+	Headers string
+	Body    []byte
 }
+
+const (
+	selectCacheSQL = `
+	SELECT body, status, headers, url FROM cache WHERE url=?
+	`
+	insertCacheSQL = `
+	INSERT INTO cache (
+		url, headers, body, status, method, datetime, collection
+	) VALUES (
+		:url, :headers, :body, :status, :method, :datetime, :collection
+	);`
+)
 
 // GetCache -
 func (c *CacheRepository) GetCache(u string) (Cache, error) {
-	tx, _ := c.Database.Begin()
-	log.Printf(u)
-	row := tx.QueryRow("SELECT body, status, headers, url FROM cache WHERE url=?", u)
+	tx := c.Database.MustBegin()
+	row := tx.QueryRowx(selectCacheSQL, u)
 	var d Cache
 
-	err := row.Scan(&d.Body, &d.Status, &d.Header, &d.URL)
-
+	err := row.StructScan(&d)
 	tx.Commit()
 	return d, err
 }
 
 // SaveCache -
-func (c *CacheRepository) SaveCache(r domain.Record) {
-	database.Insert(r)
+func (c *CacheRepository) SaveCache(r domain.Record) error {
+	tx := c.Database.MustBegin()
+
+	_, err := tx.NamedExec(insertCacheSQL, &r)
+
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -3,13 +3,13 @@ package handler
 import (
 	"bytes"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/joshbatley/proxy/domain"
 	"github.com/joshbatley/proxy/repository"
+	"github.com/joshbatley/proxy/utils"
 )
 
 // QueryHandler -
@@ -19,17 +19,18 @@ type QueryHandler struct {
 
 // Serve -
 func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
-	url := formatURL(r.URL.String())
+	url := utils.FormatURL(r.URL.String())
 
 	d, err := q.CacheRepository.GetCache(url.String())
 
 	if err == nil {
+		log.Println("served from cache")
 		q.sendCache(d, w)
 		return
 	}
 
 	p := domain.Proxy{
-		ModifyResponse: q.SaveReponse,
+		ModifyResponse: q.saveReponse,
 		URL:            url,
 	}
 
@@ -37,27 +38,33 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 // SaveReponse -
-func (q *QueryHandler) SaveReponse(res *http.Response) error {
-	// Depulicate the body to reapply to response later
-	buf, _ := ioutil.ReadAll(res.Body)
+func (q *QueryHandler) saveReponse(r *http.Response) error {
+	r.Header.Set("Access-Control-Allow-Origin", "*")
+	r.Header.Set("Access-Control-Allow-Methods", "*")
+	r.Header.Set("Access-Control-Allow-Headers", "*")
 
+	// Depulicate the body to reapply to response later
+	buf, _ := ioutil.ReadAll(r.Body)
 	newC := domain.NewRecord(
-		res.Request.URL,
+		r.Request.URL,
 		ioutil.NopCloser(bytes.NewBuffer(buf)),
-		res.Header,
-		res.StatusCode,
-		res.Request.Method,
+		r.Header,
+		r.StatusCode,
+		r.Request.Method,
 	)
 
-	q.CacheRepository.SaveCache(newC)
-	res.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+	err := q.CacheRepository.SaveCache(newC)
+	if err != nil {
+		log.Println(err)
+	}
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 
 	return nil
 }
 
 // SendCache -
 func (q *QueryHandler) sendCache(d repository.Cache, w http.ResponseWriter) {
-	for _, i := range strings.Split(d.Header, "\n") {
+	for _, i := range strings.Split(d.Headers, "\n") {
 		h := strings.Split(i, "|")
 		if len(h) >= 2 {
 			k := h[0]
@@ -65,19 +72,7 @@ func (q *QueryHandler) sendCache(d repository.Cache, w http.ResponseWriter) {
 			w.Header().Set(k, v)
 		}
 	}
+	w.Header().Set("x-Proxy", "served from cache")
 	w.WriteHeader(d.Status)
 	w.Write(d.Body)
-}
-
-func formatURL(u string) *url.URL {
-	s := regexp.MustCompile(`(?:/query\?q=)(.{0,})`)
-	r := string(s.ReplaceAll([]byte(u), []byte("$1")))
-
-	formattedURL, err := url.Parse(r)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return formattedURL
 }
