@@ -1,14 +1,12 @@
 package utils
 
-import (
-	"net/http"
-)
+import "github.com/sparrc/go-ping"
 
-// Connected -
+// Connected if connected to the internet
 func Connected() (ok bool) {
-	_, err := http.Get("http://clients3.google.com/generate_204")
+	_, err := ping.NewPinger("www.google.com")
 	if err != nil {
-		return false
+		return true
 	}
-	return true
+	return
 }

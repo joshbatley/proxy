@@ -5,28 +5,27 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/joshbatley/proxy/config"
 	"github.com/joshbatley/proxy/database"
 	"github.com/joshbatley/proxy/handler"
 	"github.com/joshbatley/proxy/repository"
+	"github.com/joshbatley/proxy/utils"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
-	config, err := config.Load("./config.yml")
-
+	config, err := utils.LoadConfig("./config.yml")
 	if err != nil {
 		panic("Config unreadable")
 	}
 
 	// DB setup
 	db := database.Conn()
-	cr := repository.CacheRepository{
+	c := repository.CacheRepository{
 		Database: db,
 	}
 
 	q := handler.QueryHandler{
-		CacheRepository: &cr,
+		CacheRepository: &c,
 	}
 
 	r := mux.NewRouter()

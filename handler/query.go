@@ -2,10 +2,10 @@ package handler
 
 import (
 	"bytes"
+	"database/sql"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/joshbatley/proxy/domain"
 	"github.com/joshbatley/proxy/repository"
@@ -22,11 +22,12 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	url := utils.FormatURL(r.URL.String())
 
 	d, err := q.CacheRepository.GetCache(url.String())
-
 	if err == nil {
 		log.Println("served from cache")
 		q.sendCache(d, w)
 		return
+	} else if err != sql.ErrNoRows {
+		log.Fatal(err)
 	}
 
 	p := domain.Proxy{
@@ -37,41 +38,29 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	p.Serve(w, r)
 }
 
-// SaveReponse -
 func (q *QueryHandler) saveReponse(r *http.Response) error {
-	r.Header.Set("Access-Control-Allow-Origin", "*")
-	r.Header.Set("Access-Control-Allow-Methods", "*")
-	r.Header.Set("Access-Control-Allow-Headers", "*")
-
+	// Apply headers to skip inbuild security
+	utils.Cors(r.Header)
 	// Depulicate the body to reapply to response later
 	buf, _ := ioutil.ReadAll(r.Body)
-	newC := domain.NewRecord(
-		r.Request.URL,
-		ioutil.NopCloser(bytes.NewBuffer(buf)),
-		r.Header,
-		r.StatusCode,
-		r.Request.Method,
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+	err := q.CacheRepository.SaveCache(
+		domain.NewRecord(
+			r.Request.URL,
+			ioutil.NopCloser(bytes.NewBuffer(buf)),
+			r.Header,
+			r.StatusCode,
+			r.Request.Method,
+		),
 	)
-
-	err := q.CacheRepository.SaveCache(newC)
 	if err != nil {
 		log.Println(err)
 	}
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-
 	return nil
 }
 
-// SendCache -
-func (q *QueryHandler) sendCache(d repository.Cache, w http.ResponseWriter) {
-	for _, i := range strings.Split(d.Headers, "\n") {
-		h := strings.Split(i, "|")
-		if len(h) >= 2 {
-			k := h[0]
-			v := h[1]
-			w.Header().Set(k, v)
-		}
-	}
+func (q *QueryHandler) sendCache(d *repository.CacheRow, w http.ResponseWriter) {
+	utils.StringToHeaders(d.Headers, w)
 	w.Header().Set("x-Proxy", "served from cache")
 	w.WriteHeader(d.Status)
 	w.Write(d.Body)

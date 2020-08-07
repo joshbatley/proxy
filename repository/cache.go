@@ -10,8 +10,8 @@ type CacheRepository struct {
 	Database *sqlx.DB
 }
 
-// Cache -
-type Cache struct {
+// CacheRow
+type CacheRow struct {
 	Status int
 	URL    string
 	// Returns Headers as 'foo=bar; baz, other \n'
@@ -32,22 +32,21 @@ const (
 )
 
 // GetCache -
-func (c *CacheRepository) GetCache(u string) (Cache, error) {
+func (c *CacheRepository) GetCache(u string) (*CacheRow, error) {
 	tx := c.Database.MustBegin()
 	row := tx.QueryRowx(selectCacheSQL, u)
-	var d Cache
+	var d CacheRow
 
 	err := row.StructScan(&d)
 	tx.Commit()
-	return d, err
+	return &d, err
 }
 
 // SaveCache -
-func (c *CacheRepository) SaveCache(r domain.Record) error {
+func (c *CacheRepository) SaveCache(r *domain.Record) error {
 	tx := c.Database.MustBegin()
 
 	_, err := tx.NamedExec(insertCacheSQL, &r)
-
 	if err != nil {
 		return err
 	}

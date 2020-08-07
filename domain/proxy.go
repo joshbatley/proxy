@@ -5,25 +5,21 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+
+	"github.com/joshbatley/proxy/utils"
 )
 
+// Proxy -
 type Proxy struct {
 	ModifyResponse func(*http.Response) error
 	URL            *url.URL
 }
 
-func preflight(w http.ResponseWriter, r *http.Request) (ok bool) {
-	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH")
-		w.Header().Set("Access-Control-Allow-Headers", "*, Origin, X-Requested-With, Content-Type, Accept")
-		return true
-	}
-	return
-}
-
+// Serve -
 func (p *Proxy) Serve(w http.ResponseWriter, r *http.Request) {
-	if ok := preflight(w, r); ok {
+	// Always allows cors, all webapps to bypass security
+	if r.Method == http.MethodOptions {
+		utils.Cors(w.Header())
 		return
 	}
 
