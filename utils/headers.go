@@ -10,7 +10,7 @@ import (
 // Cors applies cors headers
 func Cors(h http.Header) {
 	h.Set("Access-Control-Allow-Origin", "*")
-	h.Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH")
+	h.Set("Access-Control-Allow-Methods", "*")
 	h.Set("Access-Control-Allow-Headers", "*")
 }
 

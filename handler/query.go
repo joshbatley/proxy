@@ -3,10 +3,12 @@ package handler
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/domain"
 	"github.com/joshbatley/proxy/repository"
 	"github.com/joshbatley/proxy/utils"
@@ -19,9 +21,16 @@ type QueryHandler struct {
 
 // Serve -
 func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
-	url := utils.FormatURL(r.URL.String())
+	params, err := utils.FormatURL(mux.Vars(r), r.URL)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json, text/plain, */*")
+		w.WriteHeader(http.StatusBadRequest)
+		jsonString, _ := json.Marshal(err)
+		w.Write([]byte(jsonString))
+		return
+	}
 
-	d, err := q.CacheRepository.GetCache(url.String())
+	d, err := q.CacheRepository.GetCache(params.QueryURL.String())
 	if err == nil {
 		log.Println("served from cache")
 		q.sendCache(d, w)
@@ -32,7 +41,7 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 	p := domain.Proxy{
 		ModifyResponse: q.saveReponse,
-		URL:            url,
+		URL:            params.QueryURL,
 	}
 
 	p.Serve(w, r)

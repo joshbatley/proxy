@@ -29,10 +29,14 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/config", handler.ClientServe)
-	r.HandleFunc("/query", q.Serve)
-	http.Handle("/", r)
+	r.SkipClean(true)
+	r.UseEncodedPath()
+
+	r.HandleFunc("/{config:config.*}", handler.ClientServe)
+	r.HandleFunc("/{collection:[0-9]*}/{query:.*}", q.Serve)
+	r.HandleFunc("/{query:.*}", q.Serve)
 
 	log.Println("Listing on localhosts:" + config.Port)
-	http.ListenAndServe("localhost:"+config.Port, nil)
+	http.ListenAndServe("localhost:"+config.Port, r)
+
 }

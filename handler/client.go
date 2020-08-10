@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,7 +30,6 @@ func ClientServe(w http.ResponseWriter, r *http.Request) {
 	_, err = os.Stat(path)
 	if os.IsNotExist(err) {
 		// file does not exist, serve index.html
-		log.Println("index")
 		http.ServeFile(w, r, filepath.Join(StaticPath, IndexPath))
 		return
 	} else if err != nil {
