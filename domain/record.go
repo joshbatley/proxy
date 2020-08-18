@@ -18,11 +18,11 @@ type Record struct {
 	Status     int
 	Method     string
 	Datetime   time.Time
-	Collection string
+	Collection int64
 }
 
 // NewRecord take raw formats them read for sql saving
-func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string) *Record {
+func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string, c int64) *Record {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(b)
 
@@ -33,7 +33,7 @@ func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string) *Rec
 		Status:     s,
 		Method:     m,
 		Datetime:   time.Now(),
-		Collection: "",
+		Collection: c,
 	}
 
 }

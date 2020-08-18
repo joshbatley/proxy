@@ -19,9 +19,13 @@ type QueryHandler struct {
 	CacheRepository *repository.CacheRepository
 }
 
+var collection int64
+
 // Serve -
 func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	params, err := utils.FormatURL(mux.Vars(r), r.URL)
+	collection = params.Collection
+
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json, text/plain, */*")
 		w.WriteHeader(http.StatusBadRequest)
@@ -30,7 +34,7 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, err := q.CacheRepository.GetCache(params.QueryURL.String())
+	d, err := q.CacheRepository.GetCache(params.QueryURL.String(), collection)
 	if err == nil {
 		log.Println("served from cache")
 		q.sendCache(d, w)
@@ -60,6 +64,7 @@ func (q *QueryHandler) saveReponse(r *http.Response) error {
 			r.Header,
 			r.StatusCode,
 			r.Request.Method,
+			collection,
 		),
 	)
 	if err != nil {

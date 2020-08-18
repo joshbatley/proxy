@@ -7,26 +7,35 @@ import (
 )
 
 const (
+	collectionTableSQL = `
+	CREATE TABLE IF NOT EXISTS collection(
+		id INTEGER NOT NULL PRIMARY KEY,
+		friendlyname TEXT NOT NULL,
+		UNIQUE(friendlyname)
+	);
+	INSERT OR IGNORE INTO collection (friendlyname) VALUES ("DEFAULT")
+	`
 	cacheTableSQL = `
 	CREATE TABLE IF NOT EXISTS cache(
 		id INTEGER NOT NULL PRIMARY KEY,
-		collection TEXT NOT NULL,
+		collection INTEGER NOT NULL,
 		url TEXT NOT NULL,
 		headers TEXT,
 		body BLOB,
 		status INTEGER,
 		method TEXT,
-		datetime INTEGER
+		datetime INTEGER,
+		FOREIGN KEY(collection) REFERENCES collection(id)
 	);`
 	rulesTableSQL = `
 	CREATE TABLE IF NOT EXISTS rules(
 		id INTEGER NOT NULL PRIMARY KEY,
-		collection INTEGER,
+		collection INTEGER NOT NULL,
 		pattern TEXT NOT NULL,
 		cache INTEGER,
 		expiry INTEGER,
 		offlinecache INTEGER,
-		FOREIGN KEY(collection) REFERENCES cache(collection)
+		FOREIGN KEY(collection) REFERENCES collection(id)
 	);`
 )
 
@@ -51,7 +60,12 @@ func Conn() *sqlx.DB {
 }
 
 func setup() {
-	_, err := db.Exec(cacheTableSQL)
+	_, err := db.Exec(collectionTableSQL)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	_, err = db.Exec(cacheTableSQL)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -21,7 +21,7 @@ type CacheRow struct {
 
 const (
 	selectCacheSQL = `
-	SELECT body, status, headers, url FROM cache WHERE url=?
+	SELECT body, status, headers, url FROM cache WHERE url=? AND collection =?
 	`
 	insertCacheSQL = `
 	INSERT INTO cache (
@@ -32,9 +32,10 @@ const (
 )
 
 // GetCache -
-func (c *CacheRepository) GetCache(u string) (*CacheRow, error) {
+func (c *CacheRepository) GetCache(u string, col int64) (*CacheRow, error) {
+	// CHECK COLLECTION
 	tx := c.Database.MustBegin()
-	row := tx.QueryRowx(selectCacheSQL, u)
+	row := tx.QueryRowx(selectCacheSQL, u, col)
 	var d CacheRow
 
 	err := row.StructScan(&d)

@@ -3,13 +3,14 @@ package utils
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
 // Params for a request
 type Params struct {
 	QueryURL   *url.URL
-	Collection string
+	Collection int64
 }
 
 type queryParseError struct {
@@ -38,8 +39,14 @@ func FormatURL(ou map[string]string, q *url.URL) (*Params, error) {
 		}
 	}
 
+	var c int64
+	c, err = strconv.ParseInt(ou["collection"], 0, 64)
+	if err != nil {
+		c = 1
+	}
+
 	return &Params{
 		QueryURL:   formattedURL,
-		Collection: ou["collection"],
+		Collection: c,
 	}, nil
 }
