@@ -5,12 +5,12 @@ import (
 	"github.com/joshbatley/proxy/domain"
 )
 
-// CacheRepository -
+// CacheRepository setup repository with database
 type CacheRepository struct {
 	Database *sqlx.DB
 }
 
-// CacheRow
+// CacheRow returns struct from the database
 type CacheRow struct {
 	Status int
 	URL    string
@@ -31,7 +31,7 @@ const (
 	);`
 )
 
-// GetCache -
+// GetCache check DB for cached data based off url and collection
 func (c *CacheRepository) GetCache(u string, col int64) (*CacheRow, error) {
 	// CHECK COLLECTION
 	tx := c.Database.MustBegin()
@@ -43,7 +43,7 @@ func (c *CacheRepository) GetCache(u string, col int64) (*CacheRow, error) {
 	return &d, err
 }
 
-// SaveCache -
+// SaveCache saves the proxy request to the DB
 func (c *CacheRepository) SaveCache(r *domain.Record) error {
 	tx := c.Database.MustBegin()
 

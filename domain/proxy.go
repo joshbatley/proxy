@@ -9,14 +9,14 @@ import (
 	"github.com/joshbatley/proxy/utils"
 )
 
-// Proxy -
+// Proxy required info to set up a proxy request
 type Proxy struct {
 	ModifyResponse func(*http.Response) error
 	URL            *url.URL
 }
 
-// Serve -
-func (p *Proxy) Serve(w http.ResponseWriter, r *http.Request) {
+// Proxy setups and return the reverse proxy request
+func (p *Proxy) Proxy(w http.ResponseWriter, r *http.Request) {
 	// Always allows cors, all webapps to bypass security
 	if r.Method == http.MethodOptions {
 		utils.Cors(w.Header())

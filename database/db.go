@@ -39,28 +39,16 @@ const (
 	);`
 )
 
-var db *sqlx.DB
-
-// Conn -
+// Conn create, Open set up DB
 func Conn() *sqlx.DB {
 	// os.Remove("./storage.db")
 
-	conn, err := sqlx.Open("sqlite3", "./storage.db")
+	db, err := sqlx.Open("sqlite3", "./storage.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if db == nil {
-		db = conn
-	}
-
-	setup()
-
-	return db
-}
-
-func setup() {
-	_, err := db.Exec(collectionTableSQL)
+	_, err = db.Exec(collectionTableSQL)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -74,4 +62,6 @@ func setup() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	return db
 }

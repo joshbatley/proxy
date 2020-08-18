@@ -38,5 +38,4 @@ func main() {
 
 	log.Println("Listing on localhosts:" + config.Port)
 	http.ListenAndServe("localhost:"+config.Port, r)
-
 }

@@ -14,16 +14,16 @@ import (
 	"github.com/joshbatley/proxy/utils"
 )
 
-// QueryHandler -
+// QueryHandler Http handler for any query response
 type QueryHandler struct {
 	CacheRepository *repository.CacheRepository
 }
 
 var collection int64
 
-// Serve -
+// Serve Sets up all the logic for a reverse proxy and save and sends cached versions
 func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
-	params, err := utils.FormatURL(mux.Vars(r), r.URL)
+	params, err := utils.ParseParams(mux.Vars(r), r.URL)
 	collection = params.Collection
 
 	if err != nil {
@@ -35,11 +35,12 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	d, err := q.CacheRepository.GetCache(params.QueryURL.String(), collection)
-	if err == nil {
+	switch {
+	case err == nil:
 		log.Println("served from cache")
 		q.sendCache(d, w)
 		return
-	} else if err != sql.ErrNoRows {
+	case err != sql.ErrNoRows:
 		log.Fatal(err)
 	}
 
@@ -48,7 +49,7 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		URL:            params.QueryURL,
 	}
 
-	p.Serve(w, r)
+	p.Proxy(w, r)
 }
 
 func (q *QueryHandler) saveReponse(r *http.Response) error {

@@ -22,8 +22,8 @@ func (e *queryParseError) Error() string {
 	return fmt.Sprintf("%s - %s", e.Message, e.Log)
 }
 
-// FormatURL takes the url and retursn Params
-func FormatURL(ou map[string]string, q *url.URL) (*Params, error) {
+// ParseParams takes the url and returns Params
+func ParseParams(ou map[string]string, q *url.URL) (*Params, error) {
 	u := q.String()
 
 	if strings.HasPrefix(u, "/") || strings.HasPrefix(u, "/"+ou["collection"]+"/") {

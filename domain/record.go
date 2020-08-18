@@ -10,7 +10,7 @@ import (
 	"github.com/joshbatley/proxy/utils"
 )
 
-// Record - Request Data struct
+// Record Request Data struct
 type Record struct {
 	URL        string
 	Body       []byte
