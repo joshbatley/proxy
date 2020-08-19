@@ -1,8 +1,12 @@
 package repository
 
 import (
+	"database/sql"
+	"log"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/joshbatley/proxy/domain"
+	"github.com/joshbatley/proxy/utils"
 )
 
 // CacheRepository setup repository with database
@@ -10,18 +14,12 @@ type CacheRepository struct {
 	Database *sqlx.DB
 }
 
-// CacheRow returns struct from the database
-type CacheRow struct {
-	Status int
-	URL    string
-	// Returns Headers as 'foo=bar; baz, other \n'
-	Headers string
-	Body    []byte
-}
-
 const (
 	selectCacheSQL = `
-	SELECT body, status, headers, url FROM cache WHERE url=? AND collection =?
+	SELECT id, body, status, headers, url FROM cache WHERE url=? AND collection=?
+	`
+	selectCollectionSQL = `
+	SELECT 1 FROM collection WHERE id=?
 	`
 	insertCacheSQL = `
 	INSERT INTO cache (
@@ -32,15 +30,29 @@ const (
 )
 
 // GetCache check DB for cached data based off url and collection
-func (c *CacheRepository) GetCache(u string, col int64) (*CacheRow, error) {
-	// CHECK COLLECTION
-	tx := c.Database.MustBegin()
-	row := tx.QueryRowx(selectCacheSQL, u, col)
-	var d CacheRow
+func (c *CacheRepository) GetCache(u string, col int64) (*domain.CacheRow, error) {
+	tx, err := c.Database.Beginx()
 
-	err := row.StructScan(&d)
-	tx.Commit()
-	return &d, err
+	{
+		err := tx.QueryRowx(selectCollectionSQL, col).Scan()
+		defer tx.Commit()
+
+		if err == sql.ErrNoRows {
+			log.Println("Collection not found")
+			return nil, utils.New(nil, "collection_missing", "No collection by that ID exists")
+		}
+	}
+
+	var d domain.CacheRow
+	err = tx.QueryRowx(selectCacheSQL, u, col).StructScan(&d)
+
+	defer tx.Commit()
+
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	return &d, nil
 }
 
 // SaveCache saves the proxy request to the DB

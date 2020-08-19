@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -25,23 +24,24 @@ var collection int64
 func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	params, err := utils.ParseParams(mux.Vars(r), r.URL)
 	collection = params.Collection
-
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json, text/plain, */*")
-		w.WriteHeader(http.StatusBadRequest)
-		jsonString, _ := json.Marshal(err)
-		w.Write([]byte(jsonString))
+		badRequest(err, w)
 		return
 	}
 
 	d, err := q.CacheRepository.GetCache(params.QueryURL.String(), collection)
-	switch {
-	case err == nil:
+	switch e := err.(type) {
+	case *utils.InternalError:
+		badRequest(e, w)
+		return
+	default:
+		log.Fatal("DB Fell over")
+	}
+
+	if d.ID != 0 {
 		log.Println("served from cache")
 		q.sendCache(d, w)
 		return
-	case err != sql.ErrNoRows:
-		log.Fatal(err)
 	}
 
 	p := domain.Proxy{
@@ -74,9 +74,16 @@ func (q *QueryHandler) saveReponse(r *http.Response) error {
 	return nil
 }
 
-func (q *QueryHandler) sendCache(d *repository.CacheRow, w http.ResponseWriter) {
+func (q *QueryHandler) sendCache(d *domain.CacheRow, w http.ResponseWriter) {
 	utils.StringToHeaders(d.Headers, w)
 	w.Header().Set("x-Proxy", "served from cache")
 	w.WriteHeader(d.Status)
 	w.Write(d.Body)
+}
+
+func badRequest(err error, w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json, text/plain, */*")
+	w.WriteHeader(http.StatusBadRequest)
+	jsonString, _ := json.Marshal(&err)
+	w.Write(jsonString)
 }

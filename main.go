@@ -17,7 +17,6 @@ func main() {
 	if err != nil {
 		panic("Config unreadable")
 	}
-
 	// DB setup
 	db := database.Conn()
 	c := repository.CacheRepository{

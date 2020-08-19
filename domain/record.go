@@ -35,5 +35,14 @@ func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string, c in
 		Datetime:   time.Now(),
 		Collection: c,
 	}
+}
 
+// CacheRow returns struct from the database
+type CacheRow struct {
+	ID     int
+	Status int
+	URL    string
+	// Returns Headers as 'foo=bar; baz, other \n'
+	Headers string
+	Body    []byte
 }
