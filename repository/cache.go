@@ -45,13 +45,11 @@ func (c *CacheRepository) GetCache(u string, col int64) (*domain.CacheRow, error
 
 	var d domain.CacheRow
 	err = tx.QueryRowx(selectCacheSQL, u, col).StructScan(&d)
-
 	defer tx.Commit()
 
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-
 	return &d, nil
 }
 

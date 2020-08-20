@@ -30,11 +30,10 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	d, err := q.CacheRepository.GetCache(params.QueryURL.String(), collection)
-	switch e := err.(type) {
-	case *utils.InternalError:
+	if e, ok := err.(*utils.InternalError); ok {
 		badRequest(e, w)
 		return
-	default:
+	} else if err != nil {
 		log.Fatal("DB Fell over")
 	}
 
