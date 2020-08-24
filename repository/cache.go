@@ -39,7 +39,7 @@ func (c *CacheRepository) GetCache(u string, col int64) (*domain.CacheRow, error
 
 		if err == sql.ErrNoRows {
 			log.Println("Collection not found")
-			return nil, utils.New(nil, "collection_missing", "No collection by that ID exists")
+			return nil, utils.ColMissingErr(err)
 		}
 	}
 

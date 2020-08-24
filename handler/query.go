@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -30,8 +31,8 @@ func (q *QueryHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	d, err := q.CacheRepository.GetCache(params.QueryURL.String(), collection)
-	if e, ok := err.(*utils.InternalError); ok {
-		badRequest(e, w)
+	if errors.Is(err, utils.ErrCollectionMissing) {
+		badRequest(err, w)
 		return
 	} else if err != nil {
 		log.Fatal("DB Fell over")
@@ -83,6 +84,7 @@ func (q *QueryHandler) sendCache(d *domain.CacheRow, w http.ResponseWriter) {
 func badRequest(err error, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json, text/plain, */*")
 	w.WriteHeader(http.StatusBadRequest)
-	jsonString, _ := json.Marshal(&err)
+	log.Println(err.Error())
+	jsonString, _ := json.Marshal(err)
 	w.Write(jsonString)
 }
