@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Record Request Data struct
+// Record request data struct
 type Record struct {
 	URL        string
 	Body       []byte
@@ -40,7 +40,7 @@ func headersToString(h http.Header) string {
 	return b.String()
 }
 
-// NewRecord take raw formats them read for sql saving
+// NewRecord take raw formats them parses them for sql saving
 func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string, c int64) *Record {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(b)
