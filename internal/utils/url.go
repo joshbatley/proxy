@@ -1,25 +1,17 @@
 package utils
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/joshbatley/proxy"
 )
 
 // Params for a request
 type Params struct {
 	QueryURL   *url.URL
 	Collection int64
-}
-
-type queryParseError struct {
-	Message string
-	Log     string
-}
-
-func (e *queryParseError) Error() string {
-	return fmt.Sprintf("%s - %s", e.Message, e.Log)
 }
 
 // ParseParams takes the url and returns Params
@@ -33,10 +25,7 @@ func ParseParams(ou map[string]string, q *url.URL) (*Params, error) {
 
 	formattedURL, err := url.ParseRequestURI(u)
 	if err != nil {
-		return &Params{}, &queryParseError{
-			Message: "Requested URL is not valid",
-			Log:     err.Error(),
-		}
+		return &Params{}, proxy.URLInvalidErr(err)
 	}
 
 	var c int64

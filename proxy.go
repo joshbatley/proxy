@@ -1,13 +1,13 @@
-package domain
+package proxy
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
-
-	"github.com/joshbatley/proxy/utils"
 )
 
 // Record Request Data struct
@@ -21,22 +21,6 @@ type Record struct {
 	Collection int64
 }
 
-// NewRecord take raw formats them read for sql saving
-func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string, c int64) *Record {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(b)
-
-	return &Record{
-		URL:        u.String(),
-		Body:       buf.Bytes(),
-		Headers:    utils.HeadersToString(h),
-		Status:     s,
-		Method:     m,
-		Datetime:   time.Now(),
-		Collection: c,
-	}
-}
-
 // CacheRow returns struct from the database
 type CacheRow struct {
 	ID     int
@@ -45,4 +29,29 @@ type CacheRow struct {
 	// Returns Headers as 'foo=bar; baz, other \n'
 	Headers string
 	Body    []byte
+}
+
+func headersToString(h http.Header) string {
+	b := new(bytes.Buffer)
+	for k, v := range h {
+		fmt.Fprintf(b, "%s|%s\n", k, strings.Join(v, " "))
+	}
+
+	return b.String()
+}
+
+// NewRecord take raw formats them read for sql saving
+func NewRecord(u *url.URL, b io.ReadCloser, h http.Header, s int, m string, c int64) *Record {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(b)
+
+	return &Record{
+		URL:        u.String(),
+		Body:       buf.Bytes(),
+		Headers:    headersToString(h),
+		Status:     s,
+		Method:     m,
+		Datetime:   time.Now(),
+		Collection: c,
+	}
 }

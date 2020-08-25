@@ -6,8 +6,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var LoadedConfig Config
-
 // Config file structure
 type Config struct {
 	Env    string `yml:"env"`
@@ -25,8 +23,6 @@ func LoadConfig(f string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	if config != nil {
-		LoadedConfig = *config
-	}
+
 	return config, nil
 }

@@ -7,10 +7,13 @@ import (
 	"strings"
 )
 
-// ClientServe has the correct rules a SPA
-func ClientServe(w http.ResponseWriter, r *http.Request) {
-	StaticPath := "./webapp/build"
-	IndexPath := "index.html"
+// ClientHandler has the correct rules a SPA
+type ClientHandler struct {
+	StaticPath string
+	IndexPath  string
+}
+
+func (c ClientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// get the absolute path to prevent directory traversal
 	path := strings.Replace(r.URL.Path, "/config", "", 1)
@@ -24,13 +27,13 @@ func ClientServe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// prepend the path with the path to the static directory
-	path = filepath.Join(StaticPath, path)
+	path = filepath.Join(c.StaticPath, path)
 
 	// check whether a file exists at the given path
 	_, err = os.Stat(path)
 	if os.IsNotExist(err) {
 		// file does not exist, serve index.html
-		http.ServeFile(w, r, filepath.Join(StaticPath, IndexPath))
+		http.ServeFile(w, r, filepath.Join(c.StaticPath, c.IndexPath))
 		return
 	} else if err != nil {
 		// if we got an error (that wasn't that the file doesn't exist) stating the
@@ -42,6 +45,6 @@ func ClientServe(w http.ResponseWriter, r *http.Request) {
 	// otherwise, use http.FileServer to serve the static dir
 	http.StripPrefix(
 		"/config/",
-		http.FileServer(http.Dir(StaticPath)),
+		http.FileServer(http.Dir(c.StaticPath)),
 	).ServeHTTP(w, r)
 }
