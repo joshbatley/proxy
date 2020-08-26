@@ -31,6 +31,12 @@ type CacheRow struct {
 	Body    []byte
 }
 
+// Collection a
+type Collection struct {
+	ID   int64
+	Name string
+}
+
 func headersToString(h http.Header) string {
 	b := new(bytes.Buffer)
 	for k, v := range h {

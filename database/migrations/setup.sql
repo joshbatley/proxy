@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS collection(
   id INTEGER NOT NULL PRIMARY KEY,
-  friendlyname TEXT NOT NULL,
-  UNIQUE(friendlyname)
+  name TEXT NOT NULL,
+  UNIQUE(name)
 );
 
-INSERT OR IGNORE INTO collection (friendlyname) VALUES ("DEFAULT");
+INSERT OR IGNORE INTO collection (name) VALUES ("DEFAULT");
 
 CREATE TABLE IF NOT EXISTS cache(
   id INTEGER NOT NULL PRIMARY KEY,
@@ -25,5 +25,6 @@ CREATE TABLE IF NOT EXISTS rules(
   cache INTEGER,
   expiry INTEGER,
   offlinecache INTEGER,
+  allowCors INTEGER
   FOREIGN KEY(collection) REFERENCES collection(id)
 );

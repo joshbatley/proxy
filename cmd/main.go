@@ -21,7 +21,10 @@ func main() {
 	db := database.Conn()
 
 	q := handler.QueryHandler{
-		CacheRepository: &store.CacheRepository{
+		CacheStore: &store.CacheStore{
+			Database: db,
+		},
+		CollectionStore: &store.CollectionStore{
 			Database: db,
 		},
 	}

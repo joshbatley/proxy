@@ -2,8 +2,8 @@ package handler
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,28 +19,28 @@ import (
 
 // QueryHandler Http handler for any query response
 type QueryHandler struct {
-	CacheRepository *store.CacheRepository
+	CacheStore      *store.CacheStore
+	CollectionStore *store.CollectionStore
 	collection      int64
 }
 
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
 func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params, err := utils.ParseParams(mux.Vars(r), r.URL)
-	q.collection = params.Collection
 	if err != nil {
 		badRequest(err, w)
 		return
 	}
+	q.collection = params.Collection
 
-	d, err := q.CacheRepository.GetCache(params.QueryURL.String(), q.collection)
-	if errors.Is(err, proxy.ErrMissingCol) {
-		badRequest(err, w)
+	if _, err := q.CollectionStore.GetCollection(q.collection); err == sql.ErrNoRows {
+		badRequest(proxy.MissingColErr(err), w)
 		return
-	} else if err != nil {
-		log.Fatal("DB Fell over")
 	}
 
-	if d.ID != 0 {
+	if d, err := q.CacheStore.GetCache(params.QueryURL.String(), q.collection); err != nil {
+		log.Fatal("DB Fell over", err)
+	} else if d != nil {
 		log.Println("served from cache")
 		sendCache(d, w)
 		return
@@ -56,7 +56,7 @@ func (q *QueryHandler) saveReponse(r *http.Response) error {
 	// Depulicate the body to reapply to response later
 	buf, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-	if err := q.CacheRepository.SaveCache(
+	if err := q.CacheStore.SaveCache(
 		proxy.NewRecord(
 			r.Request.URL,
 			ioutil.NopCloser(bytes.NewBuffer(buf)),
