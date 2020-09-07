@@ -2,13 +2,10 @@ package handler
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -20,8 +17,8 @@ import (
 
 // QueryHandler Http handler for any query response
 type QueryHandler struct {
-	Store      *store.Store
-	collection int64
+	Store *store.Store
+	Rules *engine.RuleEngine
 }
 
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
@@ -31,87 +28,89 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest(err, w)
 		return
 	}
-	q.collection = params.Collection
-	if _, err := q.Store.GetCollection(q.collection); err == sql.ErrNoRows {
-		badRequest(proxy.MissingColErr(err), w)
+
+	err = q.Rules.StartUp(params)
+	if err != nil {
+		badRequest(err, w)
 		return
 	}
 
-	res, err := q.Store.GetRules(q.collection)
+	state, err := q.Rules.GetState()
 	if err != nil {
-		badRequest(proxy.MissingColErr(err), w)
+		badRequest(err, w)
+		return
 	}
 
-	state := engine.Engine(res, params.QueryURL)
 	switch state {
 	case engine.StateSaving:
-		d, err := q.Store.GetCache(params.QueryURL.String(), q.collection)
+		d, err := q.Store.GetCache(params.QueryURL.String(), params.Collection)
 		if err != nil {
-			log.Fatal("DB Fell over", err)
+			badRequest(err, w)
+			return
 		}
 		if d != nil {
-			log.Println("served from cache")
 			sendCache(d, w)
 			return
 		}
+		fallthrough
+	default:
+		if r.Method == http.MethodOptions {
+			corsHeaders(w.Header())
+			return
+		}
+		reverseProxy(
+			w, r,
+			params,
+			state,
+			q.Store.SaveCache,
+		)
 	}
-
-	log.Printf("Getting new data and will save %v ", state)
-	q.reverseProxy(params.QueryURL, w, r, state)
-
 }
 
-func (q *QueryHandler) saveReponse(r *http.Response) error {
-	log.Print("Saving response")
-	// Apply headers to skip inbuild security
-	corsHeaders(r.Header)
-
-	// Depulicate the body to reapply to response later
-	buf, _ := ioutil.ReadAll(r.Body)
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-	if err := q.Store.SaveCache(
-		proxy.NewRecord(
-			r.Request.URL,
-			ioutil.NopCloser(bytes.NewBuffer(buf)),
-			r.Header,
-			r.StatusCode,
-			r.Request.Method,
-			q.collection,
-		),
-	); err != nil {
-		log.Println(err)
-	}
-
-	return nil
-}
-
-func (q *QueryHandler) reverseProxy(URL *url.URL, w http.ResponseWriter, r *http.Request, state engine.State) {
-	// Always allows cors, all webapps to bypass security
-	if r.Method == http.MethodOptions {
-		corsHeaders(w.Header())
-		return
-	}
-
+func reverseProxy(
+	w http.ResponseWriter,
+	r *http.Request,
+	p *utils.Params,
+	s engine.State,
+	saveCache func(r *proxy.Record) error,
+) {
 	reverseProxy := httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			req.Header.Del("Origin")
 			req.Header.Del("Referer")
-			req.URL.Scheme = URL.Scheme
-			req.URL.Host = URL.Host
-			req.URL.Path = URL.Path
-			req.Host = URL.Host
-			req.URL.RawQuery = URL.RawQuery
+			req.URL.Scheme = p.QueryURL.Scheme
+			req.URL.Host = p.QueryURL.Host
+			req.URL.Path = p.QueryURL.Path
+			req.Host = p.QueryURL.Host
+			req.URL.RawQuery = p.QueryURL.RawQuery
 		},
-		ModifyResponse: func(r *http.Response) error {
-			if state == engine.StateSaving {
-				log.Println(state)
-				return q.saveReponse(r)
+		ModifyResponse: func(re *http.Response) error {
+			if s == engine.StateSaving {
+				// Apply headers to skip inbuild security
+				corsHeaders(re.Header)
+
+				// Depulicate the body to reapply to response later
+				buf, _ := ioutil.ReadAll(re.Body)
+				err := saveCache(
+					proxy.NewRecord(
+						re.Request.URL,
+						ioutil.NopCloser(bytes.NewBuffer(buf)),
+						re.Header,
+						re.StatusCode,
+						re.Request.Method,
+						p.Collection,
+					),
+				)
+				if err != nil {
+					badResponse(proxy.InternalError(err), re)
+					return nil
+				}
+				re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+				return nil
 			}
 			return nil
 		},
 	}
-
-	log.Println("Method:", r.Method, "Calling:", URL.String())
 
 	reverseProxy.ServeHTTP(w, r)
 }
@@ -127,6 +126,14 @@ func sendCache(d *proxy.CacheRow, w http.ResponseWriter) {
 	w.Header().Set("x-Proxy", "served from cache")
 	w.WriteHeader(d.Status)
 	w.Write(d.Body)
+}
+
+func badResponse(err error, r *http.Response) {
+	r.Header = http.Header{}
+	r.Header.Set("Content-Type", "application/json, text/plain, */*")
+	r.StatusCode = http.StatusBadRequest
+	jsonString, _ := json.Marshal(err)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
 }
 
 func badRequest(err error, w http.ResponseWriter) {

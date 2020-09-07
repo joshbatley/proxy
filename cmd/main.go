@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/database"
+	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/handler"
 	"github.com/joshbatley/proxy/internal/store"
 	"github.com/joshbatley/proxy/internal/utils"
@@ -22,11 +23,13 @@ func main() {
 	}
 	// DB setup
 	db := database.Conn()
+	store := &store.Store{
+		Database: db,
+	}
 
 	q := handler.QueryHandler{
-		Store: &store.Store{
-			Database: db,
-		},
+		Rules: engine.NewEngine(store),
+		Store: store,
 	}
 
 	r := mux.NewRouter()
