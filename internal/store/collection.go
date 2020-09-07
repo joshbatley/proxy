@@ -3,19 +3,13 @@ package store
 import (
 	"database/sql"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/joshbatley/proxy"
 )
 
-// CollectionStore setup repository with database
-type CollectionStore struct {
-	Database *sqlx.DB
-}
-
 // GetCollections get all the collections
-func (c *CollectionStore) GetCollections() (*[]proxy.Collection, error) {
+func (s *Store) GetCollections() (*[]proxy.Collection, error) {
 	cols := []proxy.Collection{}
-	err := c.Database.Select(&cols, `
+	err := s.Database.Select(&cols, `
 		SELECT * FROM collection
 	`)
 	if err != nil && err != sql.ErrNoRows {
@@ -25,9 +19,9 @@ func (c *CollectionStore) GetCollections() (*[]proxy.Collection, error) {
 }
 
 // GetCollection by id
-func (c *CollectionStore) GetCollection(id int64) (*proxy.Collection, error) {
+func (s *Store) GetCollection(id int64) (*proxy.Collection, error) {
 	col := proxy.Collection{}
-	err := c.Database.QueryRowx(`
+	err := s.Database.QueryRowx(`
 		SELECT * FROM collection WHERE id=?
 	`, id).StructScan(&col)
 
@@ -38,8 +32,8 @@ func (c *CollectionStore) GetCollection(id int64) (*proxy.Collection, error) {
 }
 
 // SaveCollection add new collection
-func (c *CollectionStore) SaveCollection(name string) (*proxy.Collection, error) {
-	d, err := c.Database.NamedExec(`
+func (s *Store) SaveCollection(name string) (*proxy.Collection, error) {
+	d, err := s.Database.NamedExec(`
 		INSERT INTO collection (
 			name
 		) VALUES (

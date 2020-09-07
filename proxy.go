@@ -31,10 +31,16 @@ type CacheRow struct {
 	Body    []byte
 }
 
-// Collection a
+// Collection returns struct from the database
 type Collection struct {
 	ID   int64
 	Name string
+}
+
+// Rule returns a single rule
+type Rule struct {
+	Pattern string
+	Cache   int
 }
 
 func headersToString(h http.Header) string {

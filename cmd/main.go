@@ -13,6 +13,9 @@ import (
 )
 
 func main() {
+	// TODO: Set up logger
+
+	// TODO: Set up as flags
 	config, err := utils.LoadConfig("./config.yml")
 	if err != nil {
 		panic("Config unreadable")
@@ -21,10 +24,7 @@ func main() {
 	db := database.Conn()
 
 	q := handler.QueryHandler{
-		CacheStore: &store.CacheStore{
-			Database: db,
-		},
-		CollectionStore: &store.CollectionStore{
+		Store: &store.Store{
 			Database: db,
 		},
 	}

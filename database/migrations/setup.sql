@@ -23,8 +23,7 @@ CREATE TABLE IF NOT EXISTS rules(
   collection INTEGER NOT NULL,
   pattern TEXT NOT NULL,
   cache INTEGER,
-  expiry INTEGER,
-  offlinecache INTEGER,
-  allowCors INTEGER
   FOREIGN KEY(collection) REFERENCES collection(id)
 );
+
+INSERT OR IGNORE INTO rules (id, collection, pattern, cache) VALUES (1, 1, ".*", 1)

@@ -22,3 +22,5 @@ func Conn() *sqlx.DB {
 
 	return db
 }
+
+// TODO: Set up migration

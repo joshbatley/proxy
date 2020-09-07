@@ -13,15 +13,15 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy"
+	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/store"
 	"github.com/joshbatley/proxy/internal/utils"
 )
 
 // QueryHandler Http handler for any query response
 type QueryHandler struct {
-	CacheStore      *store.CacheStore
-	CollectionStore *store.CollectionStore
-	collection      int64
+	Store      *store.Store
+	collection int64
 }
 
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
@@ -32,31 +32,44 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q.collection = params.Collection
-
-	if _, err := q.CollectionStore.GetCollection(q.collection); err == sql.ErrNoRows {
+	if _, err := q.Store.GetCollection(q.collection); err == sql.ErrNoRows {
 		badRequest(proxy.MissingColErr(err), w)
 		return
 	}
 
-	if d, err := q.CacheStore.GetCache(params.QueryURL.String(), q.collection); err != nil {
-		log.Fatal("DB Fell over", err)
-	} else if d != nil {
-		log.Println("served from cache")
-		sendCache(d, w)
-		return
+	res, err := q.Store.GetRules(q.collection)
+	if err != nil {
+		badRequest(proxy.MissingColErr(err), w)
 	}
 
-	q.reverseProxy(params.QueryURL, w, r)
+	state := engine.Engine(res, params.QueryURL)
+	switch state {
+	case engine.StateSaving:
+		d, err := q.Store.GetCache(params.QueryURL.String(), q.collection)
+		if err != nil {
+			log.Fatal("DB Fell over", err)
+		}
+		if d != nil {
+			log.Println("served from cache")
+			sendCache(d, w)
+			return
+		}
+	}
+
+	log.Printf("Getting new data and will save %v ", state)
+	q.reverseProxy(params.QueryURL, w, r, state)
+
 }
 
 func (q *QueryHandler) saveReponse(r *http.Response) error {
+	log.Print("Saving response")
 	// Apply headers to skip inbuild security
 	corsHeaders(r.Header)
 
 	// Depulicate the body to reapply to response later
 	buf, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-	if err := q.CacheStore.SaveCache(
+	if err := q.Store.SaveCache(
 		proxy.NewRecord(
 			r.Request.URL,
 			ioutil.NopCloser(bytes.NewBuffer(buf)),
@@ -72,7 +85,7 @@ func (q *QueryHandler) saveReponse(r *http.Response) error {
 	return nil
 }
 
-func (q *QueryHandler) reverseProxy(URL *url.URL, w http.ResponseWriter, r *http.Request) {
+func (q *QueryHandler) reverseProxy(URL *url.URL, w http.ResponseWriter, r *http.Request, state engine.State) {
 	// Always allows cors, all webapps to bypass security
 	if r.Method == http.MethodOptions {
 		corsHeaders(w.Header())
@@ -89,7 +102,13 @@ func (q *QueryHandler) reverseProxy(URL *url.URL, w http.ResponseWriter, r *http
 			req.Host = URL.Host
 			req.URL.RawQuery = URL.RawQuery
 		},
-		ModifyResponse: q.saveReponse,
+		ModifyResponse: func(r *http.Response) error {
+			if state == engine.StateSaving {
+				log.Println(state)
+				return q.saveReponse(r)
+			}
+			return nil
+		},
 	}
 
 	log.Println("Method:", r.Method, "Calling:", URL.String())

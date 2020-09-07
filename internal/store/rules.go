@@ -1,8 +1,21 @@
 package store
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/joshbatley/proxy"
+)
 
-// RulesStore setup repository with database
-type RulesStore struct {
-	Database *sqlx.DB
+// GetRules by collection ID
+func (s *Store) GetRules(id int64) ([]proxy.Rule, error) {
+	r := []proxy.Rule{}
+	err := s.Database.Select(&r, `
+		SELECT pattern, cache
+		FROM rules
+		WHERE collection=?
+	`, id)
+
+	if err != nil {
+		return nil, proxy.InternalError(err)
+	}
+
+	return r, nil
 }

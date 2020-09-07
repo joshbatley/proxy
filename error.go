@@ -3,6 +3,7 @@ package proxy
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 // Code error code type
@@ -16,7 +17,7 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return e.Message
+	return fmt.Sprint(e.Message, " - ", e.Inner.Error())
 }
 
 func (e *Error) Unwrap() error {
@@ -38,6 +39,8 @@ var (
 	ErrMissingCol code = errors.New("collection_missing")
 	// ErrURLInvalid requested URL is not valid
 	ErrURLInvalid code = errors.New("URL_invalid")
+	// ErrInternal internal error
+	ErrInternal code = errors.New("internal_error")
 )
 
 // MissingColErr returns new colleciton missing error
@@ -55,5 +58,14 @@ func URLInvalidErr(err error) error {
 		Inner:   err,
 		Code:    ErrURLInvalid,
 		Message: "Requested URL is not valid",
+	}
+}
+
+// InternalError returns a unexpected error
+func InternalError(err error) error {
+	return &Error{
+		Inner:   err,
+		Code:    ErrInternal,
+		Message: "Internal Error",
 	}
 }
