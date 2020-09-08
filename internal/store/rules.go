@@ -8,7 +8,7 @@ import (
 func (s *Store) GetRules(id int64) ([]proxy.Rule, error) {
 	r := []proxy.Rule{}
 	err := s.Database.Select(&r, `
-		SELECT pattern, cache
+		SELECT pattern, cache, cors
 		FROM rules
 		WHERE collection=?
 	`, id)

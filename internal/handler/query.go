@@ -41,9 +41,18 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodOptions && q.Rules.EnableCors() {
+		corsHeaders(w.Header())
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	switch state {
 	case engine.StateSaving:
-		d, err := q.Store.GetCache(params.QueryURL.String(), params.Collection)
+		d, err := q.Store.GetCache(
+			params.QueryURL.String(),
+			params.Collection,
+		)
 		if err != nil {
 			badRequest(err, w)
 			return
@@ -54,20 +63,14 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		if r.Method == http.MethodOptions {
-			corsHeaders(w.Header())
-			return
-		}
-		reverseProxy(
+		q.reverseProxy(
 			w, r,
 			params,
-			state,
-			q.Store.SaveCache,
 		)
 	}
 }
 
-func reverseProxy(
+func (q QueryHandler) reverseProxy(
 	w http.ResponseWriter,
 	r *http.Request,
 	p *utils.Params,
@@ -85,13 +88,15 @@ func reverseProxy(
 			req.URL.RawQuery = p.QueryURL.RawQuery
 		},
 		ModifyResponse: func(re *http.Response) error {
-			if s == engine.StateSaving {
+			if state, _ := q.Rules.GetState(); state == engine.StateSaving {
 				// Apply headers to skip inbuild security
-				corsHeaders(re.Header)
+				if q.Rules.EnableCors() {
+					corsHeaders(re.Header)
+				}
 
 				// Depulicate the body to reapply to response later
 				buf, _ := ioutil.ReadAll(re.Body)
-				err := saveCache(
+				err := q.Store.SaveCache(
 					proxy.NewRecord(
 						re.Request.URL,
 						ioutil.NopCloser(bytes.NewBuffer(buf)),

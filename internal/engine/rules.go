@@ -68,3 +68,15 @@ func (r *RuleEngine) GetState() (State, error) {
 
 	return StateProxy, nil
 }
+
+// EnableCors Check rules to see if cors are enabled
+func (r *RuleEngine) EnableCors() bool {
+	for _, i := range r.rules {
+		temp := regexp.MustCompilePOSIX(i.Pattern)
+		matched := temp.Match([]byte(r.params.QueryURL.String()))
+		if matched && i.Cors == 1 {
+			return true
+		}
+	}
+	return false
+}

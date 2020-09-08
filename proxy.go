@@ -41,6 +41,7 @@ type Collection struct {
 type Rule struct {
 	Pattern string
 	Cache   int
+	Cors    int
 }
 
 func headersToString(h http.Header) string {
