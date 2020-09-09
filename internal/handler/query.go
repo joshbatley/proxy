@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -35,7 +36,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state, err := q.Rules.GetState()
+	state := q.Rules.GetState()
 	if err != nil {
 		badRequest(err, w)
 		return
@@ -47,26 +48,32 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	e, err := q.Store.GetOrAddEndpoint(params.QueryURL.String(), r.Method, params.Collection)
+	if err != nil {
+		badRequest(err, w)
+		return
+	}
+
+	log.Println("We got here", e)
+
 	switch state {
 	case engine.StateSaving:
-		d, err := q.Store.GetCache(
+		d, err := q.Store.GetResponse(
 			params.QueryURL.String(),
-			params.Collection,
+			e.ID,
+			r.Method,
 		)
 		if err != nil {
 			badRequest(err, w)
 			return
 		}
-		if d != nil {
-			sendCache(d, w)
+		if d != nil && !q.Rules.HasExpired(d.DateTime) {
+			sendResponse(d, w)
 			return
 		}
 		fallthrough
 	default:
-		q.reverseProxy(
-			w, r,
-			params,
-		)
+		q.reverseProxy(w, r, params)
 	}
 }
 
@@ -74,8 +81,6 @@ func (q QueryHandler) reverseProxy(
 	w http.ResponseWriter,
 	r *http.Request,
 	p *utils.Params,
-	s engine.State,
-	saveCache func(r *proxy.Record) error,
 ) {
 	reverseProxy := httputil.ReverseProxy{
 		Director: func(req *http.Request) {
@@ -88,7 +93,7 @@ func (q QueryHandler) reverseProxy(
 			req.URL.RawQuery = p.QueryURL.RawQuery
 		},
 		ModifyResponse: func(re *http.Response) error {
-			if state, _ := q.Rules.GetState(); state == engine.StateSaving {
+			if state := q.Rules.GetState(); state == engine.StateSaving {
 				// Apply headers to skip inbuild security
 				if q.Rules.EnableCors() {
 					corsHeaders(re.Header)
@@ -96,8 +101,8 @@ func (q QueryHandler) reverseProxy(
 
 				// Depulicate the body to reapply to response later
 				buf, _ := ioutil.ReadAll(re.Body)
-				err := q.Store.SaveCache(
-					proxy.NewRecord(
+				err := q.Store.SaveResponse(
+					proxy.NewResponse(
 						re.Request.URL,
 						ioutil.NopCloser(bytes.NewBuffer(buf)),
 						re.Header,
@@ -120,7 +125,7 @@ func (q QueryHandler) reverseProxy(
 	reverseProxy.ServeHTTP(w, r)
 }
 
-func sendCache(d *proxy.CacheRow, w http.ResponseWriter) {
+func sendResponse(d *proxy.ResponseRow, w http.ResponseWriter) {
 	for _, i := range strings.Split(d.Headers, "\n") {
 		h := strings.Split(i, "|")
 		if len(h) >= 2 {
@@ -138,6 +143,9 @@ func badResponse(err error, r *http.Response) {
 	r.Header.Set("Content-Type", "application/json, text/plain, */*")
 	r.StatusCode = http.StatusBadRequest
 	jsonString, _ := json.Marshal(err)
+	if len(jsonString) == 2 {
+		jsonString, _ = json.Marshal(proxy.InternalError(err))
+	}
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
 }
 
@@ -145,6 +153,9 @@ func badRequest(err error, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json, text/plain, */*")
 	w.WriteHeader(http.StatusBadRequest)
 	jsonString, _ := json.Marshal(err)
+	if len(jsonString) == 2 {
+		jsonString, _ = json.Marshal(proxy.InternalError(err))
+	}
 	w.Write(jsonString)
 }
 

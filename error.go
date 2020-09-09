@@ -30,6 +30,7 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 		map[string]string{
 			"message": e.Message,
 			"code":    e.Code.Error(),
+			"error":   e.Inner.Error(),
 		},
 	)
 }

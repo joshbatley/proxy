@@ -10,7 +10,7 @@ import (
 func (s *Store) GetCollections() (*[]proxy.Collection, error) {
 	cols := []proxy.Collection{}
 	err := s.Database.Select(&cols, `
-		SELECT * FROM collection
+		SELECT * FROM Collections
 	`)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
@@ -22,7 +22,7 @@ func (s *Store) GetCollections() (*[]proxy.Collection, error) {
 func (s *Store) GetCollection(id int64) (*proxy.Collection, error) {
 	col := proxy.Collection{}
 	err := s.Database.QueryRowx(`
-		SELECT * FROM collection WHERE id=?
+		SELECT * FROM Collections WHERE ID=?
 	`, id).StructScan(&col)
 
 	if err != nil {
@@ -34,8 +34,8 @@ func (s *Store) GetCollection(id int64) (*proxy.Collection, error) {
 // SaveCollection add new collection
 func (s *Store) SaveCollection(name string) (*proxy.Collection, error) {
 	d, err := s.Database.NamedExec(`
-		INSERT INTO collection (
-			name
+		INSERT INTO Collections (
+			Name
 		) VALUES (
 			:name
 		)

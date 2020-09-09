@@ -1,0 +1,127 @@
+{
+	"info": {
+		"_postman_id": "90c20632-826e-4bb5-a85d-4f50576bfce3",
+		"name": "Proxy",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Query",
+			"item": [
+				{
+					"name": "Simple query",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ProxyAPI}}/https://jsonplaceholder.typicode.com/posts",
+							"protocol": "{{ProxyAPI}}/https",
+							"host": [
+								"jsonplaceholder",
+								"typicode",
+								"com"
+							],
+							"path": [
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Simple query with default collection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ProxyAPI}}/1/https://jsonplaceholder.typicode.com/users",
+							"protocol": "{{ProxyAPI}}/1/https",
+							"host": [
+								"jsonplaceholder",
+								"typicode",
+								"com"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Simple query with user defined collection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ProxyAPI}}/2/https://jsonplaceholder.typicode.com/users",
+							"protocol": "{{ProxyAPI}}/2/https",
+							"host": [
+								"jsonplaceholder",
+								"typicode",
+								"com"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "User must of created collection trying before using it otherwise an internal error will be returned"
+					},
+					"response": []
+				},
+				{
+					"name": "Query to show error message for invalid collection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ProxyAPI}}/9999999999999/https://jsonplaceholder.typicode.com/users",
+							"protocol": "{{ProxyAPI}}/9999999999999/https",
+							"host": [
+								"jsonplaceholder",
+								"typicode",
+								"com"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "If there are that many collect a million collection this might fail but i think it say to say it wont"
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "ba222e2a-0095-4239-968c-4dd369e84da3",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "1a9dbf07-4ed4-4d5a-b832-ea0e7f04a32c",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "c039e98d-c1ac-4365-92c3-42e5583d9797",
+			"key": "ProxyAPI",
+			"value": "http://localhost:5000"
+		}
+	],
+	"protocolProfileBehavior": {}
+}
