@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -30,13 +29,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = q.Rules.StartUp(params)
-	if err != nil {
-		badRequest(err, w)
-		return
-	}
-
-	state := q.Rules.GetState()
+	err = q.Rules.LoadRules(params)
 	if err != nil {
 		badRequest(err, w)
 		return
@@ -48,13 +41,13 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	state := q.Rules.GetState()
+
 	e, err := q.Store.GetOrAddEndpoint(params.QueryURL.String(), r.Method, params.Collection)
 	if err != nil {
 		badRequest(err, w)
 		return
 	}
-
-	log.Println("We got here", e)
 
 	switch state {
 	case engine.StateSaving:
@@ -94,11 +87,6 @@ func (q QueryHandler) reverseProxy(
 		},
 		ModifyResponse: func(re *http.Response) error {
 			if state := q.Rules.GetState(); state == engine.StateSaving {
-				// Apply headers to skip inbuild security
-				if q.Rules.EnableCors() {
-					corsHeaders(re.Header)
-				}
-
 				// Depulicate the body to reapply to response later
 				buf, _ := ioutil.ReadAll(re.Body)
 				err := q.Store.SaveResponse(
@@ -111,9 +99,14 @@ func (q QueryHandler) reverseProxy(
 						p.Collection,
 					),
 				)
+
 				if err != nil {
 					badResponse(proxy.InternalError(err), re)
 					return nil
+				}
+				// Apply headers to skip inbuild security
+				if q.Rules.EnableCors() {
+					corsHeaders(re.Header)
 				}
 				re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 				return nil

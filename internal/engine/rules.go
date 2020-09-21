@@ -17,6 +17,10 @@ type State int
 const (
 	StateSaving State = iota + 1
 	StateProxy
+	StateProxyAndSave
+	StateReturnRefresh
+	StateOffline
+	StateUpdate
 )
 
 // RuleEngine powers all rules
@@ -51,8 +55,8 @@ func (r *RuleEngine) reset(p *utils.Params) {
 	}
 }
 
-// StartUp pass in the request params and gets the rules
-func (r *RuleEngine) StartUp(p *utils.Params) error {
+// LoadRules pass in the request params and gets the rules
+func (r *RuleEngine) LoadRules(p *utils.Params) error {
 	r.reset(p)
 	_, err := r.store.GetCollection(p.Collection)
 	if err == sql.ErrNoRows {
