@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,13 +37,14 @@ func NewQueryHandler(
 	endpoints *endpoints.Manager,
 	responses *responses.Manager,
 	rules *rules.Manager,
-	engine *engine.RuleEngine) QueryHandler {
+) QueryHandler {
+
 	return QueryHandler{
 		collections: collections,
 		endpoints:   endpoints,
 		responses:   responses,
 		rules:       rules,
-		engine:      engine,
+		engine:      &engine.RuleEngine{},
 	}
 }
 
@@ -54,11 +56,19 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = q.engine.LoadRules(params)
+	_, err = q.collections.Get(params.Collection)
+	if err == sql.ErrNoRows {
+		badRequest(fail.MissingColErr(err), w)
+		return
+	}
+
+	rules, err := q.rules.Get(params.Collection)
 	if err != nil {
 		badRequest(err, w)
 		return
 	}
+
+	q.engine.LoadRules(params, rules)
 
 	if r.Method == http.MethodOptions && q.engine.EnableCors() {
 		corsHeaders(w.Header())
@@ -96,9 +106,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (q QueryHandler) reverseProxy(
-	w http.ResponseWriter,
-	r *http.Request,
-	p *params.Params,
+	w http.ResponseWriter, r *http.Request, p *params.Params,
 ) {
 	reverseProxy := httputil.ReverseProxy{
 		Director: func(req *http.Request) {

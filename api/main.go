@@ -12,7 +12,6 @@ import (
 	"github.com/joshbatley/proxy/domain/rules"
 	"github.com/joshbatley/proxy/internal/config"
 	"github.com/joshbatley/proxy/internal/database"
-	"github.com/joshbatley/proxy/internal/engine"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -31,14 +30,12 @@ func main() {
 	endpoints := endpoints.NewManager(endpoints.NewSQLRepository(db))
 	responses := responses.NewManager(responses.NewSQLRepository(db))
 	rules := rules.NewManager(rules.NewSQLRepository(db))
-	engine := engine.NewEngine(rules, collections)
 
 	q := handler.NewQueryHandler(
 		collections,
 		endpoints,
 		responses,
 		rules,
-		engine,
 	)
 
 	r := mux.NewRouter()
