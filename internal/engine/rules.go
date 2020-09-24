@@ -5,9 +5,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/joshbatley/proxy"
-	"github.com/joshbatley/proxy/internal/store"
-	"github.com/joshbatley/proxy/internal/utils"
+	"github.com/joshbatley/proxy/domain/collections"
+	"github.com/joshbatley/proxy/domain/rules"
+	"github.com/joshbatley/proxy/internal/fail"
+	"github.com/joshbatley/proxy/internal/params"
 )
 
 // State Rule current state
@@ -25,42 +26,44 @@ const (
 
 // RuleEngine powers all rules
 type RuleEngine struct {
-	store       *store.Store
-	params      *utils.Params
-	rules       []proxy.Rule
-	matchedRule *proxy.Rule
+	rules       *rules.Manager
+	collection  *collections.Manager
+	params      *params.Params
+	r           []rules.Rule
+	matchedRule *rules.Rule
 }
 
 // NewEngine inits a new Engine
-func NewEngine(store *store.Store) *RuleEngine {
+func NewEngine(rules *rules.Manager, collection *collections.Manager) *RuleEngine {
 	return &RuleEngine{
-		store: store,
+		rules:      rules,
+		collection: collection,
 	}
 }
 
-func (r *RuleEngine) getRules() ([]proxy.Rule, error) {
-	res, err := r.store.GetRules(r.params.Collection)
+func (r *RuleEngine) getRules() ([]rules.Rule, error) {
+	res, err := r.rules.Get(r.params.Collection)
 	if err != nil {
-		return nil, proxy.InternalError(err)
+		return nil, fail.InternalError(err)
 	}
 	return res, nil
 }
 
-func (r *RuleEngine) reset(p *utils.Params) {
+func (r *RuleEngine) reset(p *params.Params) {
 	if r.params != nil {
 		if r.params.QueryURL != p.QueryURL && r.params.Collection != p.Collection {
 			r.matchedRule = nil
-			r.rules = make([]proxy.Rule, 0)
+			r.r = make([]rules.Rule, 0)
 		}
 	}
 }
 
 // LoadRules pass in the request params and gets the rules
-func (r *RuleEngine) LoadRules(p *utils.Params) error {
+func (r *RuleEngine) LoadRules(p *params.Params) error {
 	r.reset(p)
-	_, err := r.store.GetCollection(p.Collection)
+	_, err := r.collection.Get(p.Collection)
 	if err == sql.ErrNoRows {
-		return proxy.MissingColErr(err)
+		return fail.MissingColErr(err)
 	}
 	r.params = p
 
@@ -69,7 +72,7 @@ func (r *RuleEngine) LoadRules(p *utils.Params) error {
 		return err
 	}
 
-	r.rules = rules
+	r.r = rules
 	return nil
 }
 
@@ -95,9 +98,9 @@ func (r *RuleEngine) HasExpired(d int64) bool {
 	return exp.Before(time.Now())
 }
 
-func (r *RuleEngine) checkRules() *proxy.Rule {
+func (r *RuleEngine) checkRules() *rules.Rule {
 	if r.matchedRule == nil {
-		for _, i := range r.rules {
+		for _, i := range r.r {
 			temp := regexp.MustCompilePOSIX(i.Pattern)
 			matched := temp.Match([]byte(r.params.QueryURL.String()))
 			if matched {

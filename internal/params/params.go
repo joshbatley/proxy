@@ -1,11 +1,11 @@
-package utils
+package params
 
 import (
 	"net/url"
 	"strconv"
 	"strings"
 
-	"github.com/joshbatley/proxy"
+	"github.com/joshbatley/proxy/internal/fail"
 )
 
 // Params for a request
@@ -14,8 +14,8 @@ type Params struct {
 	Collection int64
 }
 
-// ParseParams takes the url and returns Params
-func ParseParams(ou map[string]string, q *url.URL) (*Params, error) {
+// Parse takes the url and returns Params
+func Parse(ou map[string]string, q *url.URL) (*Params, error) {
 	u := q.String()
 
 	if strings.HasPrefix(u, "/") || strings.HasPrefix(u, "/"+ou["collection"]+"/") {
@@ -25,7 +25,7 @@ func ParseParams(ou map[string]string, q *url.URL) (*Params, error) {
 
 	formattedURL, err := url.ParseRequestURI(u)
 	if err != nil {
-		return &Params{}, proxy.URLInvalidErr(err)
+		return &Params{}, fail.URLInvalidErr(err)
 	}
 
 	var c int64

@@ -1,4 +1,4 @@
-package proxy
+package fail
 
 import (
 	"encoding/json"
@@ -15,6 +15,15 @@ type Error struct {
 	Message string
 	Code    code
 }
+
+var (
+	// ErrMissingCol collection ID no in DB
+	ErrMissingCol code = errors.New("collection_missing")
+	// ErrURLInvalid requested URL is not valid
+	ErrURLInvalid code = errors.New("URL_invalid")
+	// ErrInternal internal error
+	ErrInternal code = errors.New("internal_error")
+)
 
 func (e *Error) Error() string {
 	return fmt.Sprint(e.Message, " - ", e.Inner.Error())
@@ -34,15 +43,6 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 		},
 	)
 }
-
-var (
-	// ErrMissingCol collection ID no in DB
-	ErrMissingCol code = errors.New("collection_missing")
-	// ErrURLInvalid requested URL is not valid
-	ErrURLInvalid code = errors.New("URL_invalid")
-	// ErrInternal internal error
-	ErrInternal code = errors.New("internal_error")
-)
 
 // MissingColErr returns new colleciton missing error
 func MissingColErr(err error) error {

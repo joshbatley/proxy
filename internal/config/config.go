@@ -1,4 +1,4 @@
-package utils
+package config
 
 import (
 	"io/ioutil"
@@ -14,8 +14,8 @@ type Config struct {
 	DBFile string `yml:"DBFile"`
 }
 
-// LoadConfig read from file location
-func LoadConfig(f string) (*Config, error) {
+// Load read from file location
+func Load(f string) (*Config, error) {
 	file, _ := ioutil.ReadFile(f)
 	config := &Config{}
 	err := yaml.Unmarshal([]byte(file), &config)
