@@ -35,7 +35,7 @@ func (m *Manager) Get(u string, col int64, method string) (*Response, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	return r, err
+	return r, nil
 }
 
 func (m *Manager) GetAllByCol(col int64) (*[]Response, error) {
@@ -43,7 +43,7 @@ func (m *Manager) GetAllByCol(col int64) (*[]Response, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	return r, err
+	return r, nil
 }
 
 func (m *Manager) Save(

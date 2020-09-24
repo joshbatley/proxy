@@ -1,6 +1,9 @@
 package endpoints
 
-import "database/sql"
+import (
+	"database/sql"
+	"log"
+)
 
 // Endpoint returns a single endpoint
 type Endpoint struct {
@@ -30,6 +33,8 @@ func NewManager(r repository) *Manager {
 func (m *Manager) GetOrSave(url string, method string, col int64) (*Endpoint, error) {
 	endpoint, err := m.Get(url, method, col)
 	if err != nil {
+		log.Println(err)
+
 		return nil, err
 	}
 
@@ -53,11 +58,11 @@ func (m *Manager) Get(url string, method string, col int64) (*Endpoint, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	return endpoint, err
+	return endpoint, nil
 }
 
 func (m *Manager) GetByID(id int64) (*Endpoint, error) {
-	return m.GetByID(id)
+	return m.repo.GetByID(id)
 }
 
 func (m *Manager) Save(col int64, url string, method string) (int64, error) {

@@ -30,7 +30,7 @@ func (m *Manager) List() (*[]Collection, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	return c, err
+	return c, nil
 }
 
 func (m *Manager) Get(id int64) (*Collection, error) {
