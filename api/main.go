@@ -27,18 +27,18 @@ func main() {
 	// DB setup
 	db := database.Conn()
 
-	col := collections.NewManager(collections.NewSQLRepository(db))
-	end := endpoints.NewManager(endpoints.NewSQLRepository(db))
-	res := responses.NewManager(responses.NewSQLRepository(db))
-	rul := rules.NewManager(rules.NewSQLRepository(db))
-	eng := engine.NewEngine(rul, col)
+	collections := collections.NewManager(collections.NewSQLRepository(db))
+	endpoints := endpoints.NewManager(endpoints.NewSQLRepository(db))
+	responses := responses.NewManager(responses.NewSQLRepository(db))
+	rules := rules.NewManager(rules.NewSQLRepository(db))
+	engine := engine.NewEngine(rules, collections)
 
 	q := handler.NewQueryHandler(
-		col,
-		end,
-		res,
-		rul,
-		eng,
+		collections,
+		endpoints,
+		responses,
+		rules,
+		engine,
 	)
 
 	r := mux.NewRouter()

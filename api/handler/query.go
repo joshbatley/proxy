@@ -30,18 +30,19 @@ type QueryHandler struct {
 	engine      *engine.RuleEngine
 }
 
+// NewQueryHandler constructs a new QueryHandler
 func NewQueryHandler(
-	col *collections.Manager,
-	end *endpoints.Manager,
-	res *responses.Manager,
-	rul *rules.Manager,
-	eng *engine.RuleEngine) QueryHandler {
+	collections *collections.Manager,
+	endpoints *endpoints.Manager,
+	responses *responses.Manager,
+	rules *rules.Manager,
+	engine *engine.RuleEngine) QueryHandler {
 	return QueryHandler{
-		collections: col,
-		endpoints:   end,
-		responses:   res,
-		rules:       rul,
-		engine:      eng,
+		collections: collections,
+		endpoints:   endpoints,
+		responses:   responses,
+		rules:       rules,
+		engine:      engine,
 	}
 }
 
