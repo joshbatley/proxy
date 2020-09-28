@@ -38,10 +38,7 @@ func main() {
 		rules,
 	)
 
-	r := mux.NewRouter()
-	r.SkipClean(true)
-	r.UseEncodedPath()
-
+	r := mux.NewRouter().SkipClean(true).UseEncodedPath()
 	r.PathPrefix("/{config:config.*}").Handler(handler.ClientHandler{
 		StaticPath: "./webapp/build",
 		IndexPath:  "index.html",
