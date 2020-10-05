@@ -1,6 +1,8 @@
 package endpoints
 
 import (
+	"database/sql"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -23,7 +25,7 @@ func (r *sqlRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 		FROM Endpoints WHERE URL=? AND Method=? and CollectionId=?
 	`, url, method, col).StructScan(&e)
 
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 

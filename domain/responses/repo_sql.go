@@ -1,6 +1,8 @@
 package responses
 
 import (
+	"database/sql"
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -26,7 +28,7 @@ func (r *sqlRepo) GetAllByCol(col int64) (*[]Response, error) {
 		WHERE CollectionID=?
 	`, col)
 
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
@@ -42,7 +44,8 @@ func (r *sqlRepo) Get(u string, col int64, method string) (*Response, error) {
 		WHERE URL=? AND EndpointId=? AND Method=?
 	`, u, col, method).StructScan(&d)
 
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
+		log.Fatalln(err)
 		return nil, err
 	}
 
@@ -65,6 +68,16 @@ func (r *sqlRepo) Save(url string, h string, b []byte, st int, m string, e int64
 		"datetime": time.Now().Unix(),
 		"endpoint": e,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *sqlRepo) Delete(id string) error {
+	_, err := r.db.Exec("DELETE FROM Responses WHERE id=?", id)
 
 	if err != nil {
 		return err

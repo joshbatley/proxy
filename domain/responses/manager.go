@@ -1,7 +1,5 @@
 package responses
 
-import "database/sql"
-
 // Response returns struct from the database
 type Response struct {
 	ID     int    `db:"ID"`
@@ -17,6 +15,7 @@ type repository interface {
 	Get(u string, col int64, method string) (*Response, error)
 	GetAllByCol(col int64) (*[]Response, error)
 	Save(url string, h string, b []byte, st int, m string, e int64) error
+	Delete(id string) error
 }
 
 type Manager struct {
@@ -31,23 +30,19 @@ func NewManager(r repository) *Manager {
 }
 
 func (m *Manager) Get(u string, col int64, method string) (*Response, error) {
-	r, err := m.repo.Get(u, col, method)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-	return r, nil
+	return m.repo.Get(u, col, method)
 }
 
 func (m *Manager) GetAllByCol(col int64) (*[]Response, error) {
-	r, err := m.repo.GetAllByCol(col)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-	return r, nil
+	return m.repo.GetAllByCol(col)
 }
 
 func (m *Manager) Save(
 	url string, head string, body []byte, status int, method string, endpointID int64,
 ) error {
 	return m.repo.Save(url, head, body, status, method, endpointID)
+}
+
+func (m *Manager) Delete(id string) error {
+	return m.repo.Delete(id)
 }

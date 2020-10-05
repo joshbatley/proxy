@@ -1,6 +1,8 @@
 package collections
 
 import (
+	"database/sql"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -20,7 +22,7 @@ func (r *sqlRepo) List() (*[]Collection, error) {
 	err := r.db.Select(&cols, `
 		SELECT * FROM Collections
 	`)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 	return &cols, nil

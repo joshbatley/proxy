@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -51,18 +52,21 @@ func NewQueryHandler(
 func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
+		log.Println("Param parse fail")
 		badRequest(err, w)
 		return
 	}
 
 	_, err = q.collections.Get(params.Collection)
 	if err == sql.ErrNoRows {
+		log.Println("No collection found")
 		badRequest(fail.MissingColErr(err), w)
 		return
 	}
 
 	rules, err := q.rules.Get(params.Collection)
 	if err != nil {
+		log.Println("fail to get rules")
 		badRequest(err, w)
 		return
 	}
@@ -79,6 +83,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	e, err := q.endpoints.GetOrSave(params.QueryURL.String(), r.Method, params.Collection)
 	if err != nil {
+		log.Println("Endpoints didnt save/find")
 		badRequest(err, w)
 		return
 	}
@@ -90,6 +95,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.Method,
 		)
 		if err != nil {
+			log.Println("Getting response failed")
 			badRequest(err, w)
 			return
 		}
@@ -126,6 +132,7 @@ func (q QueryHandler) reverseProxy(w http.ResponseWriter, r *http.Request, p *pa
 			)
 
 			if err != nil {
+				log.Println("Failed to save response")
 				badResponse(fail.InternalError(err), re)
 				return nil
 			}

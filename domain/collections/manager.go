@@ -1,7 +1,5 @@
 package collections
 
-import "database/sql"
-
 // Collection returns struct from the database
 type Collection struct {
 	ID   int64  `db:"ID"`
@@ -26,11 +24,7 @@ func NewManager(r repository) *Manager {
 }
 
 func (m *Manager) List() (*[]Collection, error) {
-	c, err := m.repo.List()
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-	return c, nil
+	return m.repo.List()
 }
 
 func (m *Manager) Get(id int64) (*Collection, error) {

@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"database/sql"
 	"log"
 )
 
@@ -54,11 +53,7 @@ func (m *Manager) GetOrSave(url string, method string, col int64) (*Endpoint, er
 }
 
 func (m *Manager) Get(url string, method string, col int64) (*Endpoint, error) {
-	endpoint, err := m.repo.Get(url, method, col)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-	return endpoint, nil
+	return m.repo.Get(url, method, col)
 }
 
 func (m *Manager) GetByID(id int64) (*Endpoint, error) {
