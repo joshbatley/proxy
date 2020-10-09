@@ -1,11 +1,9 @@
 package engine
 
 import (
+	"net/url"
 	"regexp"
 	"time"
-
-	"github.com/joshbatley/proxy/domain/rules"
-	"github.com/joshbatley/proxy/internal/params"
 )
 
 // State Rule current state
@@ -23,40 +21,37 @@ const (
 
 // RuleEngine powers all rules
 type RuleEngine struct {
-	params      *params.Params
-	rules       []rules.Rule
-	matchedRule *rules.Rule
+	url         *url.URL
+	collection  int64
+	rules       []Rule
+	matchedRule *Rule
 }
 
-func (r *RuleEngine) reset(p *params.Params) {
-	if r.params != nil {
-		if r.params.QueryURL != p.QueryURL && r.params.Collection != p.Collection {
-			r.matchedRule = nil
-			r.rules = make([]rules.Rule, 0)
-		}
-	}
+// Rule a single rule
+type Rule struct {
+	Pattern      string
+	SaveResponse int
+	ForceCors    int
+	Expiry       int
 }
 
 // LoadRules pass in the request params and gets the rules
-func (r *RuleEngine) LoadRules(p *params.Params, rules []rules.Rule) {
-	r.reset(p)
-	r.params = p
+func (r *RuleEngine) LoadRules(url *url.URL, c int64, rules []Rule) {
+	r.url = url
+	r.collection = c
 	r.rules = rules
-}
-
-// GetState -
-func (r *RuleEngine) GetState() State {
-	rule := r.checkRules()
-	if rule.SaveResponse == 1 {
-		return StateSaving
-	}
-	return StateProxy
 }
 
 // EnableCors Check rules to see if cors are enabled
 func (r *RuleEngine) EnableCors() bool {
 	rule := r.checkRules()
 	return rule.ForceCors == 1
+}
+
+// CheckStore checks if store would be saved by using SaveResponse
+func (r *RuleEngine) CheckStore() bool {
+	rule := r.checkRules()
+	return rule.SaveResponse == 1
 }
 
 // HasExpired Check rules to see expiry yime
@@ -66,11 +61,11 @@ func (r *RuleEngine) HasExpired(d int64) bool {
 	return exp.Before(time.Now())
 }
 
-func (r *RuleEngine) checkRules() *rules.Rule {
+func (r *RuleEngine) checkRules() *Rule {
 	if r.matchedRule == nil {
 		for _, i := range r.rules {
 			temp := regexp.MustCompilePOSIX(i.Pattern)
-			matched := temp.Match([]byte(r.params.QueryURL.String()))
+			matched := temp.Match([]byte(r.url.String()))
 			if matched {
 				r.matchedRule = &i
 			}

@@ -1,4 +1,4 @@
-package main
+package migration
 
 import (
 	"database/sql"
@@ -11,7 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func main() {
+func StartUp() {
 	db, err := sql.Open("sqlite3", "./storage.db")
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 

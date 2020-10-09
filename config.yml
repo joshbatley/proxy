@@ -1,2 +1,4 @@
 port: 5000
 env: dev
+version: 0.1
+migration: 1

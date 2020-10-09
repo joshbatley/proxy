@@ -12,6 +12,7 @@ import (
 	"github.com/joshbatley/proxy/domain/rules"
 	"github.com/joshbatley/proxy/internal/config"
 	"github.com/joshbatley/proxy/internal/database"
+	"github.com/joshbatley/proxy/internal/migration"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -23,6 +24,10 @@ func main() {
 	if err != nil {
 		panic("Config unreadable")
 	}
+
+	// Start Migration
+	migration.StartUp()
+
 	// DB setup
 	db := database.Conn()
 
