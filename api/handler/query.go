@@ -124,7 +124,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Allows fallthrough and
+	// Allows fallthrough and proxy
 	log.Println("Proxing", params.QueryURL)
 	q.reverseProxy(w, r, params, endpointID)
 }
