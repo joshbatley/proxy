@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -20,6 +19,7 @@ import (
 	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/fail"
 	"github.com/joshbatley/proxy/internal/params"
+	"go.uber.org/zap"
 )
 
 // QueryHandler Http handler for any query response
@@ -29,6 +29,7 @@ type QueryHandler struct {
 	responses   *responses.Manager
 	rules       *rules.Manager
 	engine      *engine.RuleEngine
+	log         *zap.SugaredLogger
 	d           string
 }
 
@@ -38,6 +39,7 @@ func NewQueryHandler(
 	endpoints *endpoints.Manager,
 	responses *responses.Manager,
 	rules *rules.Manager,
+	log *zap.SugaredLogger,
 ) QueryHandler {
 	return QueryHandler{
 		collections: collections,
@@ -45,6 +47,7 @@ func NewQueryHandler(
 		responses:   responses,
 		rules:       rules,
 		engine:      &engine.RuleEngine{},
+		log:         log,
 	}
 }
 
@@ -52,7 +55,7 @@ func NewQueryHandler(
 func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
-		log.Println("Param parse fail")
+		q.log.Error("Param parse fail")
 		badRequest(err, w)
 		return
 	}
@@ -60,7 +63,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check the collection exist (if not default)
 	_, err = q.collections.Get(params.Collection)
 	if err == fail.ErrNoData {
-		log.Println("No collection found")
+		q.log.Warn("No collection found")
 		badRequest(fail.MissingColErr(err), w)
 		return
 	}
@@ -68,7 +71,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// With colleciton load rules for store
 	rules, err := q.rules.Get(params.Collection)
 	if err != nil {
-		log.Println("fail to get rules")
+		q.log.Warn("fail to get rules")
 		badRequest(err, w)
 		return
 	}
@@ -97,19 +100,17 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		end, err := q.endpoints.Get(params.QueryURL.String(), r.Method, params.Collection)
 
 		if err == fail.ErrNoData {
-			log.Println("Created enpoint")
+			q.log.Info("Created enpoint")
 			id, _ := q.endpoints.Save(params.Collection, params.QueryURL.String(), r.Method)
 			endpointID = id.String()
 		}
 
 		if err != nil && err != fail.ErrNoData {
-			log.Println("Endpoints didnt save")
+			q.log.Warn("Endpoints didnt save")
 			badRequest(err, w)
 			return
 		}
-		if err == nil {
-			endpointID = end.ID
-		}
+		endpointID = end.ID
 
 		// return cache
 		ok, err := q.returnCache(w, r, params, endpointID)
@@ -123,7 +124,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Allows fallthrough and proxy
-	log.Println("Proxing", params.QueryURL)
+	q.log.Info("Proxing", params.QueryURL)
 	q.reverseProxy(w, r, params, endpointID)
 }
 
@@ -138,22 +139,22 @@ func (q *QueryHandler) returnCache(
 	)
 
 	if err == fail.ErrNoData {
-		log.Println("no data found proxy request")
+		q.log.Info("no data found proxy request")
 		return false, nil
 	}
 
 	if err != nil {
-		log.Println("Getting response failed")
+		q.log.Error("Getting response failed")
 		return false, err
 	}
 
 	q.d = d.ID
 	if q.engine.HasExpired(d.DateTime) {
-		log.Println("response has expired - refresh data")
+		q.log.Info("response has expired - refresh data")
 		return false, nil
 	}
 
-	log.Println("returned saved response")
+	q.log.Info("returned saved response")
 	// Headers from string to headers
 	for _, i := range strings.Split(d.Headers, "\n") {
 		h := strings.Split(i, "|")
@@ -201,7 +202,7 @@ func (q *QueryHandler) reverseProxy(
 		)
 
 		if err != nil {
-			log.Println("Failed to save response")
+			q.log.Error("Failed to save response")
 
 			re.Header = http.Header{}
 			re.Header.Set("Content-Type", "application/json, text/plain, */*")

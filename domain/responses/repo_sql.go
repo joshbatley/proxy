@@ -46,7 +46,7 @@ func (r *SQLRepo) Get(u string, endpoint string, method string) (*Response, erro
 	`, u, endpoint, method).StructScan(&d)
 
 	if err == sql.ErrNoRows {
-		return nil, fail.ErrMissingCol
+		return nil, fail.ErrNoData
 	}
 
 	if err != nil {

@@ -2,8 +2,6 @@ package migration
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -11,7 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func StartUp() {
+func StartUp() error {
 	db, err := sql.Open("sqlite3", "./storage.db")
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 
@@ -19,8 +17,8 @@ func StartUp() {
 		"file://./migrations",
 		"ql", driver)
 	if err != nil {
-		log.Fatalf("HERE --- %v", err)
+		return err
 	}
-	err = m.Up()
-	fmt.Println(err)
+	m.Up()
+	return nil
 }
