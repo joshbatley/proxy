@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/joshbatley/proxy/internal/fail"
 )
 
 type sqlRepo struct {
@@ -33,6 +34,10 @@ func (r *sqlRepo) Get(id int64) (*Collection, error) {
 	err := r.db.QueryRowx(`
 		SELECT * FROM Collections WHERE ID=?
 	`, id).StructScan(&col)
+
+	if err == sql.ErrNoRows {
+		return nil, fail.ErrMissingCol
+	}
 
 	if err != nil {
 		return nil, err

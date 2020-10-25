@@ -1,8 +1,11 @@
 package endpoints
 
 import (
+	"database/sql"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/joshbatley/proxy/internal/fail"
 )
 
 // SQLRepo -
@@ -25,6 +28,10 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 			ID, PreferedStatus, Method, URL
 		FROM Endpoints WHERE URL=? AND Method=? and CollectionId=?
 	`, url, method, col).StructScan(&e)
+
+	if err == sql.ErrNoRows {
+		return nil, fail.ErrMissingCol
+	}
 
 	if err != nil {
 		return nil, err

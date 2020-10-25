@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -60,7 +59,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Check the collection exist (if not default)
 	_, err = q.collections.Get(params.Collection)
-	if err == sql.ErrNoRows {
+	if err == fail.ErrNoData {
 		log.Println("No collection found")
 		badRequest(fail.MissingColErr(err), w)
 		return
@@ -97,14 +96,13 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Check for endpoint
 		end, err := q.endpoints.Get(params.QueryURL.String(), r.Method, params.Collection)
 
-		if err == sql.ErrNoRows {
+		if err == fail.ErrNoData {
 			log.Println("Created enpoint")
-			id, err := q.endpoints.Save(params.Collection, params.QueryURL.String(), r.Method)
+			id, _ := q.endpoints.Save(params.Collection, params.QueryURL.String(), r.Method)
 			endpointID = id.String()
-			log.Println(id, err)
 		}
 
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil && err != fail.ErrNoData {
 			log.Println("Endpoints didnt save")
 			badRequest(err, w)
 			return
@@ -139,12 +137,12 @@ func (q *QueryHandler) returnCache(
 		r.Method,
 	)
 
-	if err == sql.ErrNoRows {
+	if err == fail.ErrNoData {
 		log.Println("no data found proxy request")
 		return false, nil
 	}
 
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil {
 		log.Println("Getting response failed")
 		return false, err
 	}

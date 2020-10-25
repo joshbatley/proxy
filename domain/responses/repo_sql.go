@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/joshbatley/proxy/internal/fail"
 )
 
 // SQLRepo -
@@ -43,6 +44,10 @@ func (r *SQLRepo) Get(u string, endpoint string, method string) (*Response, erro
 		FROM Responses
 		WHERE URL=? AND EndpointId=? AND Method=?
 	`, u, endpoint, method).StructScan(&d)
+
+	if err == sql.ErrNoRows {
+		return nil, fail.ErrMissingCol
+	}
 
 	if err != nil {
 		return nil, err

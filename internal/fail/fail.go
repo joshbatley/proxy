@@ -23,6 +23,8 @@ var (
 	ErrURLInvalid code = errors.New("URL_invalid")
 	// ErrInternal internal error
 	ErrInternal code = errors.New("internal_error")
+	// ErrNoData when no data is found
+	ErrNoData code = errors.New("no_data")
 )
 
 func (e *Error) Error() string {
