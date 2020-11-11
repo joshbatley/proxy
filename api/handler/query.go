@@ -93,7 +93,6 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	endpointID, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
-
 	if err != nil {
 		badRequest(err, w)
 		return
@@ -101,10 +100,9 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	res, err := q.responses.Get(
 		params.QueryURL.String(),
-		endpointID.String(),
+		endpointID,
 		r.Method,
 	)
-
 	if err == fail.ErrNoData {
 		q.log.Info("no data found proxy request")
 	}

@@ -38,7 +38,7 @@ func (r *SQLRepo) GetAllByCol(col int64) (*[]Response, error) {
 }
 
 // Get return all response where url and collection
-func (r *SQLRepo) Get(url string, endpoint string, method string) (*Response, error) {
+func (r *SQLRepo) Get(url string, endpoint uuid.UUID, method string) (*Response, error) {
 	d := Response{}
 	err := r.db.QueryRowx(`
 		SELECT ID, Body, Status, Headers, URL, DateTime

@@ -15,7 +15,7 @@ type Response struct {
 
 // Repository -
 type Repository interface {
-	Get(url string, endpoint string, method string) (*Response, error)
+	Get(url string, endpoint uuid.UUID, method string) (*Response, error)
 	GetAllByCol(col int64) (*[]Response, error)
 	Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error
 	Delete(id uuid.UUID) error
@@ -34,7 +34,7 @@ func NewManager(r Repository) *Manager {
 }
 
 // Get -
-func (m *Manager) Get(url string, endpoint string, method string) (*Response, error) {
+func (m *Manager) Get(url string, endpoint uuid.UUID, method string) (*Response, error) {
 	return m.repo.Get(url, endpoint, method)
 }
 
