@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/joshbatley/proxy/internal/fail"
 )
@@ -57,7 +58,7 @@ func (r *SQLRepo) Get(u string, endpoint string, method string) (*Response, erro
 }
 
 // Save saves the proxy request to the DB
-func (r *SQLRepo) Save(id string, url string, h string, b []byte, st int, m string, e string) error {
+func (r *SQLRepo) Save(id string, url string, h string, b []byte, st int, m string, e uuid.UUID) error {
 	_, err := r.db.NamedExec(`
 	INSERT OR REPLACE INTO Responses (
 		ID, URL, Headers, Body, Status, Method, DateTime, EndpointID

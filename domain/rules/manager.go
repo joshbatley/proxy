@@ -6,6 +6,7 @@ type Rule struct {
 	SaveResponse int    `db:"SaveResponse"`
 	ForceCors    int    `db:"ForceCors"`
 	Expiry       int    `db:"Expiry"`
+	SkipOffline  int    `db:"SkipOffline"`
 }
 
 type repository interface {

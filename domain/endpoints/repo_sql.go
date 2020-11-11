@@ -41,7 +41,7 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 }
 
 // GetByID -
-func (r *SQLRepo) GetByID(id int64) (*Endpoint, error) {
+func (r *SQLRepo) GetByID(id string) (*Endpoint, error) {
 	e := Endpoint{}
 	err := r.db.QueryRowx(`
 		SELECT ID, PreferedStatus, Method, URL FROM Endpoints WHERE id=?
@@ -55,7 +55,7 @@ func (r *SQLRepo) GetByID(id int64) (*Endpoint, error) {
 }
 
 // Save -
-func (r *SQLRepo) Save(col int64, url string, method string) (uuid.UUID, error) {
+func (r *SQLRepo) Save(url string, method string, col int64) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := r.db.Exec(`
 	INSERT INTO Endpoints (

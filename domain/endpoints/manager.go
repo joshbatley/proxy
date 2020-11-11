@@ -2,21 +2,22 @@ package endpoints
 
 import (
 	"github.com/google/uuid"
+	"github.com/joshbatley/proxy/internal/fail"
 )
 
 // Endpoint returns a single endpoint
 type Endpoint struct {
-	ID     string `db:"ID"`
-	Status int    `db:"PreferedStatus"`
-	Method string `db:"Method"`
-	URL    string `db:"URL"`
+	ID     uuid.UUID `db:"ID"`
+	Status int       `db:"PreferedStatus"`
+	Method string    `db:"Method"`
+	URL    string    `db:"URL"`
 }
 
 // Repository -
 type Repository interface {
 	Get(url string, method string, col int64) (*Endpoint, error)
-	GetByID(id int64) (*Endpoint, error)
-	Save(col int64, url string, method string) (uuid.UUID, error)
+	GetByID(id string) (*Endpoint, error)
+	Save(url string, method string, col int64) (uuid.UUID, error)
 }
 
 // Manager -
@@ -37,11 +38,29 @@ func (m *Manager) Get(url string, method string, col int64) (*Endpoint, error) {
 }
 
 // GetByID -
-func (m *Manager) GetByID(id int64) (*Endpoint, error) {
-	return m.repo.GetByID(id)
+func (m *Manager) GetByID(id uuid.UUID) (*Endpoint, error) {
+	return m.repo.GetByID(id.String())
 }
 
 // Save -
-func (m *Manager) Save(col int64, url string, method string) (uuid.UUID, error) {
-	return m.repo.Save(col, url, method)
+func (m *Manager) Save(url string, method string, col int64) (uuid.UUID, error) {
+	return m.repo.Save(url, method, col)
+}
+
+// GetOrCreate a endpoint, return the found or created ID
+func (m *Manager) GetOrCreate(url string, method string, col int64) (uuid.UUID, error) {
+	endpoint, err := m.Get(url, method, col)
+	if err != nil && err != fail.ErrNoData {
+		return uuid.Nil, err
+	}
+
+	if err == fail.ErrNoData {
+		id, err := m.Save(url, method, col)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		return id, nil
+	}
+	return endpoint.ID, nil
+
 }

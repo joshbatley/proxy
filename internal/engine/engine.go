@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"regexp"
 	"time"
+
+	"github.com/joshbatley/proxy/internal/connection"
 )
 
 // State Rule current state
@@ -33,6 +35,7 @@ type Rule struct {
 	SaveResponse int
 	ForceCors    int
 	Expiry       int
+	SkipOffline  int
 }
 
 // LoadRules pass in the request params and gets the rules
@@ -58,6 +61,12 @@ func (r *RuleEngine) CheckStore() bool {
 func (r *RuleEngine) HasExpired(d int64) bool {
 	rule := r.checkRules()
 	exp := time.Unix(d, 0).Add(time.Second * time.Duration(rule.Expiry))
+	if rule.SkipOffline == 1 {
+		return exp.Before(time.Now())
+	}
+	if !connection.IsOnline(nil) {
+		return false
+	}
 	return exp.Before(time.Now())
 }
 

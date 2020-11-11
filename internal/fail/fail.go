@@ -25,6 +25,8 @@ var (
 	ErrInternal code = errors.New("internal_error")
 	// ErrNoData when no data is found
 	ErrNoData code = errors.New("no_data")
+	// ErrOffline when no internet connection found
+	ErrOffline code = errors.New("no_connection_found")
 )
 
 func (e *Error) Error() string {
@@ -70,5 +72,14 @@ func InternalError(err error) error {
 		Inner:   err,
 		Code:    ErrInternal,
 		Message: "Internal Error",
+	}
+}
+
+// OfflineError returns a unexpected error
+func OfflineError(err error) error {
+	return &Error{
+		Inner:   err,
+		Code:    ErrOffline,
+		Message: "Check you internet connection",
 	}
 }

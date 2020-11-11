@@ -17,7 +17,7 @@ type Response struct {
 type Repository interface {
 	Get(u string, endpoint string, method string) (*Response, error)
 	GetAllByCol(col int64) (*[]Response, error)
-	Save(id string, url string, h string, b []byte, st int, m string, e string) error
+	Save(id string, url string, h string, b []byte, st int, m string, e uuid.UUID) error
 	Delete(id string) error
 }
 
@@ -45,7 +45,7 @@ func (m *Manager) GetAllByCol(col int64) (*[]Response, error) {
 
 // Save -
 func (m *Manager) Save(
-	id string, url string, head string, body []byte, status int, method string, endpointID string,
+	id string, url string, head string, body []byte, status int, method string, endpointID uuid.UUID,
 ) error {
 	if len(id) == 0 {
 		id = uuid.New().String()

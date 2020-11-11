@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS Responses(
   Status INTEGER,
   Method TEXT,
   DateTime INTEGER,
+  UNIQUE(Method, Status, EndpointID),
   FOREIGN KEY(EndpointID) REFERENCES Endpoints(ID)
 );
 
@@ -35,7 +36,8 @@ CREATE TABLE IF NOT EXISTS Rules(
   SaveResponse INTEGER,
   ForceCors INTEGER,
   Expiry INTEGER,
+  SkipOffline INTEGER,
   FOREIGN KEY(CollectionID) REFERENCES Collections(ID)
 );
 
-INSERT OR IGNORE INTO rules (ID, CollectionID, Pattern, SaveResponse, ForceCors, Expiry) VALUES (1, 1, ".*", 1, 1, 3600)
+INSERT OR IGNORE INTO rules (ID, CollectionID, Pattern, SaveResponse, ForceCors, Expiry, SkipOffline) VALUES (1, 1, ".*", 1, 1, 3600. 1)

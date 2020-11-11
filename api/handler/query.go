@@ -11,11 +11,13 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/domain/collections"
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/domain/responses"
 	"github.com/joshbatley/proxy/domain/rules"
+	"github.com/joshbatley/proxy/internal/connection"
 	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/fail"
 	"github.com/joshbatley/proxy/internal/params"
@@ -92,104 +94,39 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var endpointID string
-
 	// All to save
-	if q.engine.CheckStore() {
-		// Check for endpoint
-		end, err := q.endpoints.Get(params.QueryURL.String(), r.Method, params.Collection)
-
-		if err == fail.ErrNoData {
-			q.log.Info("Created enpoint")
-			id, _ := q.endpoints.Save(params.Collection, params.QueryURL.String(), r.Method)
-			endpointID = id.String()
-		}
-
-		if err != nil && err != fail.ErrNoData {
-			q.log.Warn("Endpoints didnt save")
-			badRequest(err, w)
-			return
-		}
-		endpointID = end.ID
-
-		// return cache
-		ok, err := q.returnCache(w, r, params, endpointID)
-		if ok {
-			return
-		}
-		if err != nil {
-			badRequest(err, w)
-			return
-		}
+	if !q.engine.CheckStore() {
+		q.log.Info("Proxing", params.QueryURL)
+		q.reverseProxy(w, r, params, func(re *http.Response) error {
+			if q.engine.EnableCors() {
+				corsHeaders(re.Header)
+			}
+			return nil
+		})
 	}
 
-	// Allows fallthrough and proxy
-	q.log.Info("Proxing", params.QueryURL)
-	q.reverseProxy(w, r, params, endpointID)
-}
-
-func (q *QueryHandler) returnCache(
-	w http.ResponseWriter, r *http.Request, p *params.Params, e string,
-) (bool, error) {
-
-	d, err := q.responses.Get(
-		p.QueryURL.String(),
-		e,
-		r.Method,
-	)
-
-	if err == fail.ErrNoData {
-		q.log.Info("no data found proxy request")
-		return false, nil
-	}
+	// Check for endpoint
+	endpointID, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
 
 	if err != nil {
-		q.log.Error("Getting response failed")
-		return false, err
+		badRequest(err, w)
+		return
 	}
 
-	q.d = d.ID
-	if q.engine.HasExpired(d.DateTime) {
-		q.log.Info("response has expired - refresh data")
-		return false, nil
+	// return cache
+	found, err := q.returnCache(w, r, params, endpointID)
+	if found {
+		return
+	}
+	if err != nil {
+		badRequest(err, w)
+		return
 	}
 
-	q.log.Info("returned saved response")
-	// Headers from string to headers
-	for _, i := range strings.Split(d.Headers, "\n") {
-		h := strings.Split(i, "|")
-		if len(h) >= 2 {
-			w.Header().Set(h[0], h[1])
-		}
-	}
-
-	w.Header().Set("x-Proxy", "served from cache")
-	w.WriteHeader(d.Status)
-	w.Write(d.Body)
-	return true, nil
-
-}
-
-func (q *QueryHandler) reverseProxy(
-	w http.ResponseWriter, r *http.Request, p *params.Params, e string,
-) {
-	director := func(req *http.Request) {
-		req.Header.Del("Origin")
-		req.Header.Del("Referer")
-		req.URL.Scheme = p.QueryURL.Scheme
-		req.URL.Host = p.QueryURL.Host
-		req.URL.Path = p.QueryURL.Path
-		req.Host = p.QueryURL.Host
-		req.URL.RawQuery = p.QueryURL.RawQuery
-	}
-
-	modifyResponse := func(re *http.Response) error {
-		if !q.engine.CheckStore() {
-			return nil
-		}
-
+	q.reverseProxy(w, r, params, func(re *http.Response) error {
 		// Depulicate the body to reapply to response later
 		buf, _ := ioutil.ReadAll(re.Body)
+		q.log.Info("saving response for", re.Request.URL)
 
 		err := q.saveResponse(
 			q.d,
@@ -198,7 +135,7 @@ func (q *QueryHandler) reverseProxy(
 			re.Header,
 			re.StatusCode,
 			re.Request.Method,
-			e,
+			endpointID,
 		)
 
 		if err != nil {
@@ -219,17 +156,82 @@ func (q *QueryHandler) reverseProxy(
 
 		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		return nil
+	})
+
+}
+
+func (q *QueryHandler) returnCache(
+	w http.ResponseWriter, r *http.Request, p *params.Params, e uuid.UUID,
+) (bool, error) {
+
+	res, err := q.responses.Get(
+		p.QueryURL.String(),
+		e.String(),
+		r.Method,
+	)
+
+	if err == fail.ErrNoData {
+		q.log.Info("no data found proxy request")
+		return false, nil
+	}
+
+	if err != nil {
+		q.log.Error("Getting response failed")
+		return false, err
+	}
+
+	q.d = res.ID
+	if q.engine.HasExpired(res.DateTime) {
+		q.log.Info("response has expired - refresh data")
+		return false, nil
+	}
+
+	q.log.Info("returned saved response")
+	// Headers from string to headers
+	for _, i := range strings.Split(res.Headers, "\n") {
+		h := strings.Split(i, "|")
+		if len(h) >= 2 {
+			w.Header().Set(h[0], h[1])
+		}
+	}
+
+	w.Header().Set("x-Proxy", "served from cache")
+	w.WriteHeader(res.Status)
+	w.Write(res.Body)
+	return true, nil
+
+}
+
+func (q *QueryHandler) reverseProxy(
+	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error,
+) {
+	director := func(req *http.Request) {
+		req.Header.Del("Origin")
+		req.Header.Del("Referer")
+		req.URL.Scheme = p.QueryURL.Scheme
+		req.URL.Host = p.QueryURL.Host
+		req.URL.Path = p.QueryURL.Path
+		req.Host = p.QueryURL.Host
+		req.URL.RawQuery = p.QueryURL.RawQuery
 	}
 
 	reverseProxy := httputil.ReverseProxy{
 		Director:       director,
-		ModifyResponse: modifyResponse,
+		ModifyResponse: mr,
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			if !connection.IsOnline(nil) {
+				badRequest(fail.OfflineError(err), w)
+			} else {
+				q.log.Warn("Internal Error on reverse Proxy - ", err)
+				badRequest(fail.InternalError(err), w)
+			}
+		},
 	}
 
 	reverseProxy.ServeHTTP(w, r)
 }
 
-func (q *QueryHandler) saveResponse(id string, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e string) error {
+func (q *QueryHandler) saveResponse(id string, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e uuid.UUID) error {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(b)
 

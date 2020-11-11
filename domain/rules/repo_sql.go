@@ -16,7 +16,7 @@ func NewSQLRepository(db *sqlx.DB) *sqlRepo {
 func (r *sqlRepo) Get(id int64) ([]Rule, error) {
 	arr := []Rule{}
 	err := r.db.Select(&arr, `
-		SELECT Pattern, SaveResponse, ForceCors, Expiry
+		SELECT Pattern, SaveResponse, ForceCors, Expiry, SkipOffline
 		FROM Rules
 		WHERE CollectionID=?
 	`, id)
