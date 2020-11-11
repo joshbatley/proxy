@@ -32,7 +32,6 @@ type QueryHandler struct {
 	rules       *rules.Manager
 	engine      *engine.RuleEngine
 	log         *zap.SugaredLogger
-	d           string
 }
 
 // NewQueryHandler constructs a new QueryHandler
@@ -94,7 +93,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// All to save
+	// Skip Store check, and straight proxy
 	if !q.engine.CheckStore() {
 		q.log.Info("Proxing", params.QueryURL)
 		q.reverseProxy(w, r, params, func(re *http.Response) error {
@@ -105,7 +104,6 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Check for endpoint
 	endpointID, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
 
 	if err != nil {
@@ -114,13 +112,49 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return cache
-	found, err := q.returnCache(w, r, params, endpointID)
-	if found {
-		return
+	// found, err := q.returnCache(w, r, params, endpointID)
+	// if found {
+	// 	return
+	// }
+	// if err != nil {
+	// 	badRequest(err, w)
+	// 	return
+	// }
+
+	res, err := q.responses.Get(
+		params.QueryURL.String(),
+		endpointID.String(),
+		r.Method,
+	)
+
+	if err == fail.ErrNoData {
+		q.log.Info("no data found proxy request")
 	}
-	if err != nil {
+
+	if err != nil && err != fail.ErrNoData {
+		q.log.Error("Getting response failed")
 		badRequest(err, w)
 		return
+	}
+
+	if res != nil {
+		if q.engine.HasExpired(res.DateTime) {
+			q.log.Info("response has expired - refresh data")
+		} else {
+			q.log.Info("returned saved response")
+			// Headers from string to headers
+			for _, i := range strings.Split(res.Headers, "\n") {
+				h := strings.Split(i, "|")
+				if len(h) >= 2 {
+					w.Header().Set(h[0], h[1])
+				}
+			}
+
+			w.Header().Set("x-Proxy", "served from cache")
+			w.WriteHeader(res.Status)
+			w.Write(res.Body)
+			return
+		}
 	}
 
 	q.reverseProxy(w, r, params, func(re *http.Response) error {
@@ -128,8 +162,13 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		buf, _ := ioutil.ReadAll(re.Body)
 		q.log.Info("saving response for", re.Request.URL)
 
+		var id uuid.UUID
+		if res != nil {
+			id = res.ID
+		}
+
 		err := q.saveResponse(
-			q.d,
+			id,
 			re.Request.URL,
 			ioutil.NopCloser(bytes.NewBuffer(buf)),
 			re.Header,
@@ -160,47 +199,46 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (q *QueryHandler) returnCache(
-	w http.ResponseWriter, r *http.Request, p *params.Params, e uuid.UUID,
-) (bool, error) {
+// func (q *QueryHandler) returnCache(
+// 	w http.ResponseWriter, r *http.Request, p *params.Params, e uuid.UUID,
+// ) (bool, error) {
 
-	res, err := q.responses.Get(
-		p.QueryURL.String(),
-		e.String(),
-		r.Method,
-	)
+// 	res, err := q.responses.Get(
+// 		p.QueryURL.String(),
+// 		e.String(),
+// 		r.Method,
+// 	)
 
-	if err == fail.ErrNoData {
-		q.log.Info("no data found proxy request")
-		return false, nil
-	}
+// 	if err == fail.ErrNoData {
+// 		q.log.Info("no data found proxy request")
+// 		return false, nil
+// 	}
 
-	if err != nil {
-		q.log.Error("Getting response failed")
-		return false, err
-	}
+// 	if err != nil {
+// 		q.log.Error("Getting response failed")
+// 		return false, err
+// 	}
 
-	q.d = res.ID
-	if q.engine.HasExpired(res.DateTime) {
-		q.log.Info("response has expired - refresh data")
-		return false, nil
-	}
+// 	q.d = res.ID
+// 	if q.engine.HasExpired(res.DateTime) {
+// 		q.log.Info("response has expired - refresh data")
+// 		return false, nil
+// 	}
 
-	q.log.Info("returned saved response")
-	// Headers from string to headers
-	for _, i := range strings.Split(res.Headers, "\n") {
-		h := strings.Split(i, "|")
-		if len(h) >= 2 {
-			w.Header().Set(h[0], h[1])
-		}
-	}
+// 	q.log.Info("returned saved response")
+// 	// Headers from string to headers
+// 	for _, i := range strings.Split(res.Headers, "\n") {
+// 		h := strings.Split(i, "|")
+// 		if len(h) >= 2 {
+// 			w.Header().Set(h[0], h[1])
+// 		}
+// 	}
 
-	w.Header().Set("x-Proxy", "served from cache")
-	w.WriteHeader(res.Status)
-	w.Write(res.Body)
-	return true, nil
-
-}
+// 	w.Header().Set("x-Proxy", "served from cache")
+// 	w.WriteHeader(res.Status)
+// 	w.Write(res.Body)
+// 	return true, nil
+// }
 
 func (q *QueryHandler) reverseProxy(
 	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error,
@@ -231,7 +269,7 @@ func (q *QueryHandler) reverseProxy(
 	reverseProxy.ServeHTTP(w, r)
 }
 
-func (q *QueryHandler) saveResponse(id string, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e uuid.UUID) error {
+func (q *QueryHandler) saveResponse(id uuid.UUID, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e uuid.UUID) error {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(b)
 

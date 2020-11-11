@@ -41,7 +41,7 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 }
 
 // GetByID -
-func (r *SQLRepo) GetByID(id string) (*Endpoint, error) {
+func (r *SQLRepo) GetByID(id uuid.UUID) (*Endpoint, error) {
 	e := Endpoint{}
 	err := r.db.QueryRowx(`
 		SELECT ID, PreferedStatus, Method, URL FROM Endpoints WHERE id=?

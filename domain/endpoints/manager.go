@@ -16,7 +16,7 @@ type Endpoint struct {
 // Repository -
 type Repository interface {
 	Get(url string, method string, col int64) (*Endpoint, error)
-	GetByID(id string) (*Endpoint, error)
+	GetByID(id uuid.UUID) (*Endpoint, error)
 	Save(url string, method string, col int64) (uuid.UUID, error)
 }
 
@@ -39,7 +39,7 @@ func (m *Manager) Get(url string, method string, col int64) (*Endpoint, error) {
 
 // GetByID -
 func (m *Manager) GetByID(id uuid.UUID) (*Endpoint, error) {
-	return m.repo.GetByID(id.String())
+	return m.repo.GetByID(id)
 }
 
 // Save -

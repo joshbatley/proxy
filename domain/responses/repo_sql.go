@@ -38,13 +38,13 @@ func (r *SQLRepo) GetAllByCol(col int64) (*[]Response, error) {
 }
 
 // Get return all response where url and collection
-func (r *SQLRepo) Get(u string, endpoint string, method string) (*Response, error) {
+func (r *SQLRepo) Get(url string, endpoint string, method string) (*Response, error) {
 	d := Response{}
 	err := r.db.QueryRowx(`
 		SELECT ID, Body, Status, Headers, URL, DateTime
 		FROM Responses
 		WHERE URL=? AND EndpointId=? AND Method=?
-	`, u, endpoint, method).StructScan(&d)
+	`, url, endpoint, method).StructScan(&d)
 
 	if err == sql.ErrNoRows {
 		return nil, fail.ErrNoData
@@ -58,7 +58,7 @@ func (r *SQLRepo) Get(u string, endpoint string, method string) (*Response, erro
 }
 
 // Save saves the proxy request to the DB
-func (r *SQLRepo) Save(id string, url string, h string, b []byte, st int, m string, e uuid.UUID) error {
+func (r *SQLRepo) Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error {
 	_, err := r.db.NamedExec(`
 	INSERT OR REPLACE INTO Responses (
 		ID, URL, Headers, Body, Status, Method, DateTime, EndpointID
@@ -83,7 +83,7 @@ func (r *SQLRepo) Save(id string, url string, h string, b []byte, st int, m stri
 }
 
 // Delete -
-func (r *SQLRepo) Delete(id string) error {
+func (r *SQLRepo) Delete(id uuid.UUID) error {
 	_, err := r.db.Exec("DELETE FROM Responses WHERE id=?", id)
 
 	if err != nil {

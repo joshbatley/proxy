@@ -4,9 +4,9 @@ import "github.com/google/uuid"
 
 // Response returns struct from the database
 type Response struct {
-	ID     string `db:"ID"`
-	Status int    `db:"Status"`
-	URL    string `db:"URL"`
+	ID     uuid.UUID `db:"ID"`
+	Status int       `db:"Status"`
+	URL    string    `db:"URL"`
 	// Returns Headers as 'foo=bar; baz, other \n'
 	Headers  string `db:"Headers"`
 	Body     []byte `db:"Body"`
@@ -15,10 +15,10 @@ type Response struct {
 
 // Repository -
 type Repository interface {
-	Get(u string, endpoint string, method string) (*Response, error)
+	Get(url string, endpoint string, method string) (*Response, error)
 	GetAllByCol(col int64) (*[]Response, error)
-	Save(id string, url string, h string, b []byte, st int, m string, e uuid.UUID) error
-	Delete(id string) error
+	Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error
+	Delete(id uuid.UUID) error
 }
 
 // Manager -
@@ -34,8 +34,8 @@ func NewManager(r Repository) *Manager {
 }
 
 // Get -
-func (m *Manager) Get(u string, endpoint string, method string) (*Response, error) {
-	return m.repo.Get(u, endpoint, method)
+func (m *Manager) Get(url string, endpoint string, method string) (*Response, error) {
+	return m.repo.Get(url, endpoint, method)
 }
 
 // GetAllByCol -
@@ -45,16 +45,16 @@ func (m *Manager) GetAllByCol(col int64) (*[]Response, error) {
 
 // Save -
 func (m *Manager) Save(
-	id string, url string, head string, body []byte, status int, method string, endpointID uuid.UUID,
+	id uuid.UUID, url string, head string, body []byte, status int, method string, endpointID uuid.UUID,
 ) error {
 	if len(id) == 0 {
-		id = uuid.New().String()
+		id = uuid.New()
 	}
 
 	return m.repo.Save(id, url, head, body, status, method, endpointID)
 }
 
 // Delete -
-func (m *Manager) Delete(id string) error {
+func (m *Manager) Delete(id uuid.UUID) error {
 	return m.repo.Delete(id)
 }
