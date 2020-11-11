@@ -30,7 +30,6 @@ type QueryHandler struct {
 	endpoints   *endpoints.Manager
 	responses   *responses.Manager
 	rules       *rules.Manager
-	engine      *engine.RuleEngine
 	log         *zap.SugaredLogger
 }
 
@@ -47,7 +46,6 @@ func NewQueryHandler(
 		endpoints:   endpoints,
 		responses:   responses,
 		rules:       rules,
-		engine:      &engine.RuleEngine{},
 		log:         log,
 	}
 }
@@ -69,35 +67,25 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// With colleciton load rules for store
-	rules, err := q.rules.Get(params.Collection)
+	engine, err := q.loadEngine(params)
 	if err != nil {
-		q.log.Warn("fail to get rules")
+		q.log.Warn("fail to load rules")
 		badRequest(err, w)
 		return
 	}
 
-	// Convert rules type
-	engineRules := make([]engine.Rule, len(rules))
-	for _, v := range rules {
-		engineRules = append(engineRules, engine.Rule(v))
-	}
-
-	// pass rules to engine
-	q.engine.LoadRules(params.QueryURL, params.Collection, engineRules)
-
 	// Check if method is OPTIONS and if Engine need to override
-	if r.Method == http.MethodOptions && q.engine.EnableCors() {
+	if r.Method == http.MethodOptions && engine.EnableCors() {
 		corsHeaders(w.Header())
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
 	// Skip Store check, and straight proxy
-	if !q.engine.CheckStore() {
+	if !engine.CheckStore() {
 		q.log.Info("Proxing", params.QueryURL)
 		q.reverseProxy(w, r, params, func(re *http.Response) error {
-			if q.engine.EnableCors() {
+			if engine.EnableCors() {
 				corsHeaders(re.Header)
 			}
 			return nil
@@ -110,16 +98,6 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest(err, w)
 		return
 	}
-
-	// return cache
-	// found, err := q.returnCache(w, r, params, endpointID)
-	// if found {
-	// 	return
-	// }
-	// if err != nil {
-	// 	badRequest(err, w)
-	// 	return
-	// }
 
 	res, err := q.responses.Get(
 		params.QueryURL.String(),
@@ -138,7 +116,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if res != nil {
-		if q.engine.HasExpired(res.DateTime) {
+		if engine.HasExpired(res.DateTime) {
 			q.log.Info("response has expired - refresh data")
 		} else {
 			q.log.Info("returned saved response")
@@ -189,56 +167,14 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Apply headers to skip inbuild security
-		if q.engine.EnableCors() {
+		if engine.EnableCors() {
 			corsHeaders(re.Header)
 		}
 
 		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		return nil
 	})
-
 }
-
-// func (q *QueryHandler) returnCache(
-// 	w http.ResponseWriter, r *http.Request, p *params.Params, e uuid.UUID,
-// ) (bool, error) {
-
-// 	res, err := q.responses.Get(
-// 		p.QueryURL.String(),
-// 		e.String(),
-// 		r.Method,
-// 	)
-
-// 	if err == fail.ErrNoData {
-// 		q.log.Info("no data found proxy request")
-// 		return false, nil
-// 	}
-
-// 	if err != nil {
-// 		q.log.Error("Getting response failed")
-// 		return false, err
-// 	}
-
-// 	q.d = res.ID
-// 	if q.engine.HasExpired(res.DateTime) {
-// 		q.log.Info("response has expired - refresh data")
-// 		return false, nil
-// 	}
-
-// 	q.log.Info("returned saved response")
-// 	// Headers from string to headers
-// 	for _, i := range strings.Split(res.Headers, "\n") {
-// 		h := strings.Split(i, "|")
-// 		if len(h) >= 2 {
-// 			w.Header().Set(h[0], h[1])
-// 		}
-// 	}
-
-// 	w.Header().Set("x-Proxy", "served from cache")
-// 	w.WriteHeader(res.Status)
-// 	w.Write(res.Body)
-// 	return true, nil
-// }
 
 func (q *QueryHandler) reverseProxy(
 	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error,
@@ -287,6 +223,28 @@ func (q *QueryHandler) saveResponse(id uuid.UUID, u *url.URL, b io.ReadCloser, h
 		m,
 		e,
 	)
+}
+
+func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
+	// With colleciton load rules for store
+	rules, err := q.rules.Get(params.Collection)
+	if err != nil {
+		q.log.Warn("fail to get rules")
+		return nil, err
+	}
+
+	// Convert rules type
+	engineRules := make([]engine.Rule, len(rules))
+	for _, v := range rules {
+		engineRules = append(engineRules, engine.Rule(v))
+	}
+
+	engine := &engine.RuleEngine{}
+
+	// pass rules to engine
+	engine.LoadRules(params.QueryURL, params.Collection, engineRules)
+
+	return engine, nil
 }
 
 func badRequest(err error, w http.ResponseWriter) {
