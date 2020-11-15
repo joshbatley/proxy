@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -120,43 +118,10 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest(err, w)
 		return
 	case ids := <-proxyChannel:
-		reverseProxy(w, r, params, func(re *http.Response) error {
-			// Depulicate the body to reapply to response later
-			buf, _ := ioutil.ReadAll(re.Body)
-			q.log.Info("Saving response for", re.Request.URL)
-
-			err := q.saveResponse(
-				ids.id,
-				re.Request.URL,
-				ioutil.NopCloser(bytes.NewBuffer(buf)),
-				re.Header,
-				re.StatusCode,
-				re.Request.Method,
-				ids.endpoint,
-			)
-
-			if err != nil {
-				q.log.Error("Failed to save response")
-
-				re.Header = http.Header{}
-				re.Header.Set("Content-Type", "application/json, text/plain, */*")
-				re.StatusCode = http.StatusBadRequest
-				jsonString, _ := json.Marshal(fail.InternalError(err))
-				re.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
-				return nil
-			}
-
-			// Apply headers to skip inbuild security
-			if engine.EnableCors() {
-				corsHeaders(re.Header)
-			}
-
-			re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-			return nil
-		}, q.log)
+		q.proxyAndSave(w, r, params, ids, engine)
 		return
-	case rz := <-cachedChannel:
-		for _, i := range strings.Split(rz.headers, "\n") {
+	case cache := <-cachedChannel:
+		for _, i := range strings.Split(cache.headers, "\n") {
 			h := strings.Split(i, "|")
 			if len(h) >= 2 {
 				w.Header().Set(h[0], h[1])
@@ -164,8 +129,8 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("x-Proxy", "served from cache")
-		w.WriteHeader(rz.status)
-		w.Write(rz.body)
+		w.WriteHeader(cache.status)
+		w.Write(cache.body)
 		return
 	}
 }
@@ -234,26 +199,49 @@ func (q *QueryHandler) checkResponses(
 	return
 }
 
-func (q *QueryHandler) saveResponse(
-	id uuid.UUID, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e uuid.UUID,
-) error {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(b)
+func (q *QueryHandler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
+	reverseProxy(w, r, p, func(re *http.Response) error {
+		q.log.Info("Saving response for ", re.Request.URL)
 
-	headers := new(bytes.Buffer)
-	for k, v := range h {
-		fmt.Fprintf(headers, "%s|%s\n", k, strings.Join(v, " "))
-	}
+		// Depulicate the body to reapply to response later
+		buf, _ := ioutil.ReadAll(re.Body)
+		body := new(bytes.Buffer)
+		body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
-	return q.responses.Save(
-		id,
-		u.String(),
-		headers.String(),
-		buf.Bytes(),
-		s,
-		m,
-		e,
-	)
+		headers := new(bytes.Buffer)
+		for k, v := range re.Header {
+			fmt.Fprintf(headers, "%s|%s\n", k, strings.Join(v, " "))
+		}
+
+		err := q.responses.Save(
+			ids.id,
+			re.Request.URL.String(),
+			headers.String(),
+			body.Bytes(),
+			re.StatusCode,
+			re.Request.Method,
+			ids.endpoint,
+		)
+
+		if err != nil {
+			q.log.Error("Failed to save response")
+
+			re.Header = http.Header{}
+			re.Header.Set("Content-Type", "application/json, text/plain, */*")
+			re.StatusCode = http.StatusBadRequest
+			jsonString, _ := json.Marshal(fail.InternalError(err))
+			re.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
+			return nil
+		}
+
+		// Apply headers to skip inbuild security
+		if engine.EnableCors() {
+			corsHeaders(re.Header)
+		}
+
+		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+		return nil
+	}, q.log)
 }
 
 func reverseProxy(
