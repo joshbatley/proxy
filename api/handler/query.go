@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -61,6 +62,7 @@ type ids struct {
 
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
 func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
 		q.log.Error("Param parse failed")
@@ -82,6 +84,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest(err, w)
 		return
 	}
+	params.QueryURL = engine.Remapper()
 
 	// Check if method is OPTIONS and if Engine need to override
 	if r.Method == http.MethodOptions && engine.EnableCors() {
@@ -127,6 +130,12 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set(h[0], h[1])
 			}
 		}
+		if sleepTime := engine.GetSleepTime(); sleepTime > 0 {
+			q.log.Infof("Sleeping for %dms", sleepTime)
+			diff := time.Since(startTime).Milliseconds()
+			time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
+		}
+		q.log.Info("Returned saved response")
 
 		w.Header().Set("x-Proxy", "served from cache")
 		w.WriteHeader(cache.status)
@@ -139,7 +148,7 @@ func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, er
 	// With colleciton load rules for store
 	rules, err := q.rules.Get(params.Collection)
 	if err != nil {
-		q.log.Warn("Failed to get rules")
+		q.log.Warn("Failed to get rules", err)
 		return nil, err
 	}
 
@@ -185,7 +194,6 @@ func (q *QueryHandler) checkResponses(
 	}
 
 	if !engine.HasExpired(res.DateTime) {
-		q.log.Info("Returned saved response")
 		cachedChannel <- response{
 			headers: res.Headers,
 			status:  res.Status,

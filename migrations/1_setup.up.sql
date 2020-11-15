@@ -32,12 +32,14 @@ CREATE TABLE IF NOT EXISTS Endpoints(
 CREATE TABLE IF NOT EXISTS Rules(
   ID INTEGER NOT NULL PRIMARY KEY,
   CollectionID INTEGER NOT NULL,
-  Pattern TEXT NOT NULL,
+  Pattern BLOB NOT NULL,
   SaveResponse INTEGER,
   ForceCors INTEGER,
   Expiry INTEGER,
   SkipOffline INTEGER,
+  DelayTime INTEGER,
+  RemapRegex BLOB,
   FOREIGN KEY(CollectionID) REFERENCES Collections(ID)
 );
 
-INSERT OR IGNORE INTO rules (ID, CollectionID, Pattern, SaveResponse, ForceCors, Expiry, SkipOffline) VALUES (1, 1, ".*", 1, 1, 3600. 1)
+INSERT OR IGNORE INTO rules (ID, CollectionID, Pattern, SaveResponse, ForceCors, Expiry, SkipOffline, DelayTime, RemapRegex) VALUES (1, 1, ".*", 1, 1, 3600, 1, 0, "")

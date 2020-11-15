@@ -19,6 +19,9 @@ func StartUp() error {
 	if err != nil {
 		return err
 	}
-	m.Up()
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return err
+	}
 	return nil
 }

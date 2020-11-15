@@ -36,6 +36,8 @@ type Rule struct {
 	ForceCors    int
 	Expiry       int
 	SkipOffline  int
+	Delay        int
+	RemapRegex   string
 }
 
 // LoadRules pass in the request params and gets the rules
@@ -70,10 +72,30 @@ func (r *RuleEngine) HasExpired(d int64) bool {
 	return exp.Before(time.Now())
 }
 
+// Remapper remaps the urls
+func (r *RuleEngine) Remapper() *url.URL {
+	rule := r.checkRules()
+	if len(rule.RemapRegex) != 0 {
+		temp := regexp.MustCompile(rule.Pattern)
+		s := temp.ReplaceAllString(r.url.String(), rule.RemapRegex)
+		newURL, err := url.ParseRequestURI(s)
+		if err == nil {
+			return newURL
+		}
+	}
+	return r.url
+}
+
+// GetSleepTime Get the current rules delay time
+func (r *RuleEngine) GetSleepTime() int64 {
+	rule := r.checkRules()
+	return int64(rule.Delay)
+}
+
 func (r *RuleEngine) checkRules() *Rule {
 	if r.matchedRule == nil {
 		for _, i := range r.rules {
-			temp := regexp.MustCompilePOSIX(i.Pattern)
+			temp := regexp.MustCompile(i.Pattern)
 			matched := temp.Match([]byte(r.url.String()))
 			if matched {
 				r.matchedRule = &i

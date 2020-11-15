@@ -7,6 +7,8 @@ type Rule struct {
 	ForceCors    int    `db:"ForceCors"`
 	Expiry       int    `db:"Expiry"`
 	SkipOffline  int    `db:"SkipOffline"`
+	Delay        int    `db:"DelayTime"`
+	RemapRegex   string `db:"RemapRegex"`
 }
 
 type repository interface {
