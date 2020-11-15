@@ -50,11 +50,22 @@ func NewQueryHandler(
 	}
 }
 
+type response struct {
+	headers string
+	status  int
+	body    []byte
+}
+
+type ids struct {
+	endpoint uuid.UUID
+	id       uuid.UUID
+}
+
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
 func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
-		q.log.Error("Param parse fail")
+		q.log.Error("Param parse failed")
 		badRequest(err, w)
 		return
 	}
@@ -69,13 +80,14 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	engine, err := q.loadEngine(params)
 	if err != nil {
-		q.log.Warn("fail to load rules")
+		q.log.Warn("Failed to load rules")
 		badRequest(err, w)
 		return
 	}
 
 	// Check if method is OPTIONS and if Engine need to override
 	if r.Method == http.MethodOptions && engine.EnableCors() {
+		q.log.Info("Cors request")
 		corsHeaders(w.Header())
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -83,127 +95,148 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Skip Store check, and straight proxy
 	if !engine.CheckStore() {
-		q.log.Info("Proxing", params.QueryURL)
-		q.reverseProxy(w, r, params, func(re *http.Response) error {
+		q.log.Info("Skipping cache check and proxing: ", params.QueryURL)
+		reverseProxy(w, r, params, func(re *http.Response) error {
 			if engine.EnableCors() {
 				corsHeaders(re.Header)
 			}
 			return nil
-		})
+		}, q.log)
+		return
 	}
 
-	endpointID, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
-	if err != nil {
+	cachedChannel := make(chan response)
+	proxyChannel := make(chan ids)
+	errChannel := make(chan error)
+
+	defer close(cachedChannel)
+	defer close(proxyChannel)
+	defer close(errChannel)
+
+	go q.checkResponses(params, r, engine, cachedChannel, proxyChannel, errChannel)
+
+	select {
+	case err := <-errChannel:
 		badRequest(err, w)
+		return
+	case ids := <-proxyChannel:
+		reverseProxy(w, r, params, func(re *http.Response) error {
+			// Depulicate the body to reapply to response later
+			buf, _ := ioutil.ReadAll(re.Body)
+			q.log.Info("Saving response for", re.Request.URL)
+
+			err := q.saveResponse(
+				ids.id,
+				re.Request.URL,
+				ioutil.NopCloser(bytes.NewBuffer(buf)),
+				re.Header,
+				re.StatusCode,
+				re.Request.Method,
+				ids.endpoint,
+			)
+
+			if err != nil {
+				q.log.Error("Failed to save response")
+
+				re.Header = http.Header{}
+				re.Header.Set("Content-Type", "application/json, text/plain, */*")
+				re.StatusCode = http.StatusBadRequest
+				jsonString, _ := json.Marshal(fail.InternalError(err))
+				re.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
+				return nil
+			}
+
+			// Apply headers to skip inbuild security
+			if engine.EnableCors() {
+				corsHeaders(re.Header)
+			}
+
+			re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+			return nil
+		}, q.log)
+		return
+	case rz := <-cachedChannel:
+		for _, i := range strings.Split(rz.headers, "\n") {
+			h := strings.Split(i, "|")
+			if len(h) >= 2 {
+				w.Header().Set(h[0], h[1])
+			}
+		}
+
+		w.Header().Set("x-Proxy", "served from cache")
+		w.WriteHeader(rz.status)
+		w.Write(rz.body)
+		return
+	}
+}
+
+func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
+	// With colleciton load rules for store
+	rules, err := q.rules.Get(params.Collection)
+	if err != nil {
+		q.log.Warn("Failed to get rules")
+		return nil, err
+	}
+
+	// Convert rules type
+	engineRules := make([]engine.Rule, len(rules))
+	for _, v := range rules {
+		engineRules = append(engineRules, engine.Rule(v))
+	}
+
+	engine := &engine.RuleEngine{}
+
+	// pass rules to engine
+	engine.LoadRules(params.QueryURL, params.Collection, engineRules)
+
+	return engine, nil
+}
+
+func (q *QueryHandler) checkResponses(
+	params *params.Params, r *http.Request, engine *engine.RuleEngine,
+	cachedChannel chan response, proxyChannel chan ids, errChannel chan error,
+) {
+	endpoint, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
+	if err != nil {
+		errChannel <- err
 		return
 	}
 
 	res, err := q.responses.Get(
 		params.QueryURL.String(),
-		endpointID,
+		endpoint,
 		r.Method,
 	)
-	if err == fail.ErrNoData {
-		q.log.Info("no data found proxy request")
-	}
-
 	if err != nil && err != fail.ErrNoData {
-		q.log.Error("Getting response failed")
-		badRequest(err, w)
+		errChannel <- err
 		return
 	}
 
-	if res != nil {
-		if engine.HasExpired(res.DateTime) {
-			q.log.Info("response has expired - refresh data")
-		} else {
-			q.log.Info("returned saved response")
-			// Headers from string to headers
-			for _, i := range strings.Split(res.Headers, "\n") {
-				h := strings.Split(i, "|")
-				if len(h) >= 2 {
-					w.Header().Set(h[0], h[1])
-				}
-			}
+	if err == fail.ErrNoData || res == nil {
+		q.log.Info("No data found proxy request")
+		proxyChannel <- ids{endpoint: endpoint, id: uuid.Nil}
+		return
 
-			w.Header().Set("x-Proxy", "served from cache")
-			w.WriteHeader(res.Status)
-			w.Write(res.Body)
-			return
-		}
 	}
 
-	q.reverseProxy(w, r, params, func(re *http.Response) error {
-		// Depulicate the body to reapply to response later
-		buf, _ := ioutil.ReadAll(re.Body)
-		q.log.Info("saving response for", re.Request.URL)
-
-		var id uuid.UUID
-		if res != nil {
-			id = res.ID
+	if !engine.HasExpired(res.DateTime) {
+		q.log.Info("Returned saved response")
+		cachedChannel <- response{
+			headers: res.Headers,
+			status:  res.Status,
+			body:    res.Body,
 		}
+		return
+	}
 
-		err := q.saveResponse(
-			id,
-			re.Request.URL,
-			ioutil.NopCloser(bytes.NewBuffer(buf)),
-			re.Header,
-			re.StatusCode,
-			re.Request.Method,
-			endpointID,
-		)
-
-		if err != nil {
-			q.log.Error("Failed to save response")
-
-			re.Header = http.Header{}
-			re.Header.Set("Content-Type", "application/json, text/plain, */*")
-			re.StatusCode = http.StatusBadRequest
-			jsonString, _ := json.Marshal(fail.InternalError(err))
-			re.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
-			return nil
-		}
-
-		// Apply headers to skip inbuild security
-		if engine.EnableCors() {
-			corsHeaders(re.Header)
-		}
-
-		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-		return nil
-	})
+	q.log.Info("Response has expired - refresh data")
+	proxyChannel <- ids{endpoint: endpoint, id: res.ID}
+	return
 }
 
-func (q *QueryHandler) reverseProxy(
-	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error,
-) {
-	director := func(req *http.Request) {
-		req.Header.Del("Origin")
-		req.Header.Del("Referer")
-		req.URL.Scheme = p.QueryURL.Scheme
-		req.URL.Host = p.QueryURL.Host
-		req.URL.Path = p.QueryURL.Path
-		req.Host = p.QueryURL.Host
-		req.URL.RawQuery = p.QueryURL.RawQuery
-	}
-
-	reverseProxy := httputil.ReverseProxy{
-		Director:       director,
-		ModifyResponse: mr,
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			if !connection.IsOnline(nil) {
-				badRequest(fail.OfflineError(err), w)
-			} else {
-				q.log.Warn("Internal Error on reverse Proxy - ", err)
-				badRequest(fail.InternalError(err), w)
-			}
-		},
-	}
-
-	reverseProxy.ServeHTTP(w, r)
-}
-
-func (q *QueryHandler) saveResponse(id uuid.UUID, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e uuid.UUID) error {
+func (q *QueryHandler) saveResponse(
+	id uuid.UUID, u *url.URL, b io.ReadCloser, h http.Header, s int, m string, e uuid.UUID,
+) error {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(b)
 
@@ -223,26 +256,33 @@ func (q *QueryHandler) saveResponse(id uuid.UUID, u *url.URL, b io.ReadCloser, h
 	)
 }
 
-func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
-	// With colleciton load rules for store
-	rules, err := q.rules.Get(params.Collection)
-	if err != nil {
-		q.log.Warn("fail to get rules")
-		return nil, err
+func reverseProxy(
+	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error, logger *zap.SugaredLogger,
+) {
+	director := func(req *http.Request) {
+		req.Header.Del("Origin")
+		req.Header.Del("Referer")
+		req.URL.Scheme = p.QueryURL.Scheme
+		req.URL.Host = p.QueryURL.Host
+		req.URL.Path = p.QueryURL.Path
+		req.Host = p.QueryURL.Host
+		req.URL.RawQuery = p.QueryURL.RawQuery
 	}
 
-	// Convert rules type
-	engineRules := make([]engine.Rule, len(rules))
-	for _, v := range rules {
-		engineRules = append(engineRules, engine.Rule(v))
+	reverseProxy := httputil.ReverseProxy{
+		Director:       director,
+		ModifyResponse: mr,
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			if !connection.IsOnline(nil) {
+				badRequest(fail.OfflineError(err), w)
+			} else {
+				logger.Warn("Internal Error on reverse Proxy - ", err)
+				badRequest(fail.InternalError(err), w)
+			}
+		},
 	}
 
-	engine := &engine.RuleEngine{}
-
-	// pass rules to engine
-	engine.LoadRules(params.QueryURL, params.Collection, engineRules)
-
-	return engine, nil
+	reverseProxy.ServeHTTP(w, r)
 }
 
 func badRequest(err error, w http.ResponseWriter) {
