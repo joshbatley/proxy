@@ -2,8 +2,9 @@ package collections
 
 // Collection returns struct from the database
 type Collection struct {
-	ID   int64  `db:"ID"`
-	Name string `db:"Name"`
+	ID              int64  `db:"ID"`
+	Name            string `db:"Name"`
+	HealthCheckURLs string `db:"HealthCheckURLs"`
 }
 
 type repository interface {

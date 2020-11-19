@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -9,7 +10,6 @@ import (
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/domain/responses"
 	"github.com/joshbatley/proxy/domain/rules"
-	"github.com/joshbatley/proxy/internal/config"
 	"github.com/joshbatley/proxy/internal/database"
 	"github.com/joshbatley/proxy/internal/logger"
 	"github.com/joshbatley/proxy/internal/migration"
@@ -19,14 +19,11 @@ import (
 func main() {
 	log := logger.Setup()
 
-	// TODO: Set up as flags
-	config, err := config.Load("./config.yml")
-	if err != nil {
-		log.Fatal("Config unreadable")
-	}
+	port := flag.String("port", "5000", "desired port for internal server to run on")
+	flag.Parse()
 
-	// Start Migration
-	err = migration.StartUp()
+	// Start Migratio
+	err := migration.StartUp()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,6 +55,7 @@ func main() {
 	r.PathPrefix("/{collection:[0-9]*}/{query:.*}").Handler(q)
 	r.PathPrefix("/{query:.*}").Handler(q)
 
-	log.Info("Listing on localhosts:" + config.Port)
-	http.ListenAndServe("localhost:"+config.Port, r)
+	log.Infof("Listing on localhosts:" + *port)
+	err = http.ListenAndServe("localhost:"+*port, r)
+	log.Info(err)
 }

@@ -70,14 +70,6 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check the collection exist (if not default)
-	_, err = q.collections.Get(params.Collection)
-	if err == fail.ErrNoData {
-		q.log.Warn("No collection found")
-		badRequest(fail.MissingColErr(err), w)
-		return
-	}
-
 	engine, err := q.loadEngine(params)
 	if err != nil {
 		q.log.Warn("Failed to load rules")
@@ -145,6 +137,17 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
+	// Check the collection exist (if not default)
+	col, err := q.collections.Get(params.Collection)
+	if err == fail.ErrNoData {
+		q.log.Warn("No collection found")
+		return nil, fail.MissingColErr(err)
+	}
+	var urls []string
+	if col != nil {
+		urls = strings.Split(col.HealthCheckURLs, ",")
+	}
+
 	// With colleciton load rules for store
 	rules, err := q.rules.Get(params.Collection)
 	if err != nil {
@@ -161,7 +164,7 @@ func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, er
 	engine := &engine.RuleEngine{}
 
 	// pass rules to engine
-	engine.LoadRules(params.QueryURL, params.Collection, engineRules)
+	engine.LoadRules(params.QueryURL, params.Collection, engineRules, urls)
 
 	return engine, nil
 }
@@ -269,7 +272,7 @@ func reverseProxy(
 		Director:       director,
 		ModifyResponse: mr,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			if !connection.IsOnline(nil) {
+			if connection.IsOffline(nil) {
 				badRequest(fail.OfflineError(err), w)
 			} else {
 				logger.Warn("Internal Error on reverse Proxy - ", err)

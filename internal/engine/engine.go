@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log"
 	"net/url"
 	"regexp"
 	"time"
@@ -23,10 +24,11 @@ const (
 
 // RuleEngine powers all rules
 type RuleEngine struct {
-	url         *url.URL
-	collection  int64
-	rules       []Rule
-	matchedRule *Rule
+	url             *url.URL
+	collection      int64
+	rules           []Rule
+	matchedRule     *Rule
+	healthCheckURLS []string
 }
 
 // Rule a single rule
@@ -41,10 +43,11 @@ type Rule struct {
 }
 
 // LoadRules pass in the request params and gets the rules
-func (r *RuleEngine) LoadRules(url *url.URL, c int64, rules []Rule) {
+func (r *RuleEngine) LoadRules(url *url.URL, c int64, rules []Rule, healthCheckURLS []string) {
 	r.url = url
 	r.collection = c
 	r.rules = rules
+	r.healthCheckURLS = healthCheckURLS
 }
 
 // EnableCors Check rules to see if cors are enabled
@@ -66,7 +69,8 @@ func (r *RuleEngine) HasExpired(d int64) bool {
 	if rule.SkipOffline == 1 {
 		return exp.Before(time.Now())
 	}
-	if !connection.IsOnline(nil) {
+	if connection.IsOffline(r.healthCheckURLS) {
+		log.Println("connection is offline")
 		return false
 	}
 	return exp.Before(time.Now())

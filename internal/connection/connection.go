@@ -1,19 +1,19 @@
 package connection
 
 import (
-	"net"
+	"net/http"
 )
 
-// IsOnline calls google to check for a connection
-func IsOnline(urls []string) bool {
+// IsOffline calls google to check for a connection
+func IsOffline(urls []string) bool {
 	if len(urls) == 0 {
-		urls = append(urls, "google.com")
+		urls = append(urls, "http://clients3.google.com/generate_204")
 	}
 
 	for _, u := range urls {
-		ips, _ := net.LookupIP(u)
-		if len(ips) > 0 {
-			return true
+		_, err := http.Get(u)
+		if err == nil {
+			return false
 		}
 	}
 	return false

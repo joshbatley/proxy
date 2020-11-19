@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS Collections(
   ID INTEGER NOT NULL PRIMARY KEY,
   Name TEXT NOT NULL,
+  HealthCheckURLs TEXT,
   UNIQUE(Name)
 );
 
