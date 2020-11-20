@@ -1,4 +1,4 @@
-package handler
+package client
 
 import (
 	"net/http"
@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-// ClientHandler has the correct rules a SPA
-type ClientHandler struct {
+// Handler has the correct rules a SPA
+type Handler struct {
 	StaticPath string
 	IndexPath  string
 }
 
-func (c ClientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (c Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// get the absolute path to prevent directory traversal
 	path := strings.Replace(r.URL.Path, "/config", "", 1)

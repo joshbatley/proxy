@@ -1,4 +1,4 @@
-package handler
+package query
 
 import (
 	"bytes"
@@ -6,62 +6,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/joshbatley/proxy/domain/collections"
-	"github.com/joshbatley/proxy/domain/endpoints"
-	"github.com/joshbatley/proxy/domain/responses"
-	"github.com/joshbatley/proxy/domain/rules"
-	"github.com/joshbatley/proxy/internal/connection"
 	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/fail"
 	"github.com/joshbatley/proxy/internal/params"
-	"go.uber.org/zap"
 )
 
-// QueryHandler Http handler for any query response
-type QueryHandler struct {
-	collections *collections.Manager
-	endpoints   *endpoints.Manager
-	responses   *responses.Manager
-	rules       *rules.Manager
-	log         *zap.SugaredLogger
-}
-
-// NewQueryHandler constructs a new QueryHandler
-func NewQueryHandler(
-	collections *collections.Manager,
-	endpoints *endpoints.Manager,
-	responses *responses.Manager,
-	rules *rules.Manager,
-	log *zap.SugaredLogger,
-) QueryHandler {
-	return QueryHandler{
-		collections: collections,
-		endpoints:   endpoints,
-		responses:   responses,
-		rules:       rules,
-		log:         log,
-	}
-}
-
-type response struct {
-	headers string
-	status  int
-	body    []byte
-}
-
-type ids struct {
-	endpoint uuid.UUID
-	id       uuid.UUID
-}
-
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
-func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
@@ -136,7 +92,7 @@ func (q QueryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
+func (q *Handler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
 	// Check the collection exist (if not default)
 	col, err := q.collections.Get(params.Collection)
 	if err == fail.ErrNoData {
@@ -169,7 +125,7 @@ func (q *QueryHandler) loadEngine(params *params.Params) (*engine.RuleEngine, er
 	return engine, nil
 }
 
-func (q *QueryHandler) checkResponses(
+func (q *Handler) checkResponses(
 	params *params.Params, r *http.Request, engine *engine.RuleEngine,
 	cachedChannel chan response, proxyChannel chan ids, errChannel chan error,
 ) {
@@ -210,7 +166,7 @@ func (q *QueryHandler) checkResponses(
 	return
 }
 
-func (q *QueryHandler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
+func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
 	reverseProxy(w, r, p, func(re *http.Response) error {
 		q.log.Info("Saving response for ", re.Request.URL)
 
@@ -253,51 +209,4 @@ func (q *QueryHandler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *p
 		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		return nil
 	}, q.log)
-}
-
-func reverseProxy(
-	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error, logger *zap.SugaredLogger,
-) {
-	director := func(req *http.Request) {
-		req.Header.Del("Origin")
-		req.Header.Del("Referer")
-		req.URL.Scheme = p.QueryURL.Scheme
-		req.URL.Host = p.QueryURL.Host
-		req.URL.Path = p.QueryURL.Path
-		req.Host = p.QueryURL.Host
-		req.URL.RawQuery = p.QueryURL.RawQuery
-	}
-
-	reverseProxy := httputil.ReverseProxy{
-		Director:       director,
-		ModifyResponse: mr,
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			if connection.IsOffline(nil) {
-				badRequest(fail.OfflineError(err), w)
-			} else {
-				logger.Warn("Internal Error on reverse Proxy - ", err)
-				badRequest(fail.InternalError(err), w)
-			}
-		},
-	}
-
-	reverseProxy.ServeHTTP(w, r)
-}
-
-func badRequest(err error, w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json, text/plain, */*")
-	w.WriteHeader(http.StatusBadRequest)
-	jsonString, _ := json.Marshal(err)
-
-	if len(jsonString) == 2 {
-		jsonString, _ = json.Marshal(fail.InternalError(err))
-	}
-
-	w.Write(jsonString)
-}
-
-func corsHeaders(h http.Header) {
-	h.Set("Access-Control-Allow-Origin", "*")
-	h.Set("Access-Control-Allow-Methods", "*")
-	h.Set("Access-Control-Allow-Headers", "*")
 }

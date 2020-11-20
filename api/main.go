@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/joshbatley/proxy/api/handler"
+	"github.com/joshbatley/proxy/api/handler/admin"
+	"github.com/joshbatley/proxy/api/handler/client"
+	"github.com/joshbatley/proxy/api/handler/query"
 	"github.com/joshbatley/proxy/domain/collections"
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/domain/responses"
@@ -39,7 +41,7 @@ func main() {
 	responses := responses.NewManager(responses.NewSQLRepository(db))
 	rules := rules.NewManager(rules.NewSQLRepository(db))
 
-	q := handler.NewQueryHandler(
+	q := query.NewHandler(
 		collections,
 		endpoints,
 		responses,
@@ -48,7 +50,11 @@ func main() {
 	)
 
 	r := mux.NewRouter().SkipClean(true).UseEncodedPath()
-	r.PathPrefix("/{config:config.*}").Handler(handler.ClientHandler{
+
+	adminRouter := r.PathPrefix("/admin").Subrouter()
+	admin.Router(adminRouter)
+
+	r.PathPrefix("/{config:config.*}").Handler(client.Handler{
 		StaticPath: "./webapp/build",
 		IndexPath:  "index.html",
 	})
