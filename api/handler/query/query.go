@@ -9,15 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Handler Http handler for any query response
-type Handler struct {
-	collections *collections.Manager
-	endpoints   *endpoints.Manager
-	responses   *responses.Manager
-	rules       *rules.Manager
-	log         *zap.SugaredLogger
-}
-
 type response struct {
 	headers string
 	status  int
@@ -27,6 +18,15 @@ type response struct {
 type ids struct {
 	endpoint uuid.UUID
 	id       uuid.UUID
+}
+
+// Handler Http handler for any query response
+type Handler struct {
+	collections *collections.Manager
+	endpoints   *endpoints.Manager
+	responses   *responses.Manager
+	rules       *rules.Manager
+	log         *zap.SugaredLogger
 }
 
 // NewHandler constructs a new QueryHandler

@@ -14,6 +14,7 @@ import (
 	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/fail"
 	"github.com/joshbatley/proxy/internal/params"
+	"github.com/joshbatley/proxy/internal/writers"
 )
 
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
@@ -22,14 +23,14 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
 		q.log.Error("Param parse failed")
-		badRequest(err, w)
+		writers.BadRequest(err, w)
 		return
 	}
 
 	engine, err := q.loadEngine(params)
 	if err != nil {
 		q.log.Warn("Failed to load rules")
-		badRequest(err, w)
+		writers.BadRequest(err, w)
 		return
 	}
 	params.QueryURL = engine.Remapper()
@@ -37,7 +38,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check if method is OPTIONS and if Engine need to override
 	if r.Method == http.MethodOptions && engine.EnableCors() {
 		q.log.Info("Cors request")
-		corsHeaders(w.Header())
+		writers.CorsHeaders(w.Header())
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -47,7 +48,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		q.log.Info("Skipping cache check and proxing: ", params.QueryURL)
 		reverseProxy(w, r, params, func(re *http.Response) error {
 			if engine.EnableCors() {
-				corsHeaders(re.Header)
+				writers.CorsHeaders(re.Header)
 			}
 			return nil
 		}, q.log)
@@ -66,7 +67,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case err := <-errChannel:
-		badRequest(err, w)
+		writers.BadRequest(err, w)
 		return
 	case ids := <-proxyChannel:
 		q.proxyAndSave(w, r, params, ids, engine)
@@ -101,7 +102,7 @@ func (q *Handler) loadEngine(params *params.Params) (*engine.RuleEngine, error) 
 	}
 	var urls []string
 	if col != nil {
-		urls = strings.Split(col.HealthCheckURLs, ",")
+		urls = strings.Split(col.HealthCheckURLs.String, ",")
 	}
 
 	// With colleciton load rules for store
@@ -203,7 +204,7 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 
 		// Apply headers to skip inbuild security
 		if engine.EnableCors() {
-			corsHeaders(re.Header)
+			writers.CorsHeaders(re.Header)
 		}
 
 		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))

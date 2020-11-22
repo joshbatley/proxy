@@ -1,14 +1,16 @@
 package collections
 
+import "database/sql"
+
 // Collection returns struct from the database
 type Collection struct {
-	ID              int64  `db:"ID"`
-	Name            string `db:"Name"`
-	HealthCheckURLs string `db:"HealthCheckURLs"`
+	ID              int64          `db:"ID"`
+	Name            string         `db:"Name"`
+	HealthCheckURLs sql.NullString `db:"HealthCheckURLs"`
 }
 
 type repository interface {
-	List() (*[]Collection, error)
+	List() ([]Collection, error)
 	Get(id int64) (*Collection, error)
 	Save(name string) (*Collection, error)
 }
@@ -24,7 +26,7 @@ func NewManager(r repository) *Manager {
 	}
 }
 
-func (m *Manager) List() (*[]Collection, error) {
+func (m *Manager) List() ([]Collection, error) {
 	return m.repo.List()
 }
 

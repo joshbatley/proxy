@@ -41,11 +41,11 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 }
 
 // GetByID -
-func (r *SQLRepo) GetByID(id uuid.UUID) (*Endpoint, error) {
-	e := Endpoint{}
-	err := r.db.QueryRowx(`
-		SELECT ID, PreferedStatus, Method, URL FROM Endpoints WHERE id=?
-	`, id).StructScan(&e)
+func (r *SQLRepo) GetByID(id int64) (*[]Endpoint, error) {
+	e := []Endpoint{}
+	err := r.db.Select(&e, `
+		SELECT * FROM Endpoints WHERE CollectionID=?
+	`, id)
 
 	if err != nil {
 		return nil, err

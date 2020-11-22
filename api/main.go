@@ -48,11 +48,18 @@ func main() {
 		rules,
 		log,
 	)
+	a := admin.NewHandler(
+		collections,
+		endpoints,
+		responses,
+		rules,
+		log,
+	)
 
 	r := mux.NewRouter().SkipClean(true).UseEncodedPath()
 
 	adminRouter := r.PathPrefix("/admin").Subrouter()
-	admin.Router(adminRouter)
+	a.Router(adminRouter)
 
 	r.PathPrefix("/{config:config.*}").Handler(client.Handler{
 		StaticPath: "./webapp/build",

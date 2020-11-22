@@ -18,7 +18,7 @@ func NewSQLRepository(db *sqlx.DB) *sqlRepo {
 	}
 }
 
-func (r *sqlRepo) List() (*[]Collection, error) {
+func (r *sqlRepo) List() ([]Collection, error) {
 	cols := []Collection{}
 	err := r.db.Select(&cols, `
 		SELECT * FROM Collections
@@ -26,7 +26,7 @@ func (r *sqlRepo) List() (*[]Collection, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	return &cols, nil
+	return cols, nil
 }
 
 func (r *sqlRepo) Get(id int64) (*Collection, error) {
