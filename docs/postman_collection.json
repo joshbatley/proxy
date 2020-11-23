@@ -89,6 +89,59 @@
 						"description": "If there are that many collect a million collection this might fail but i think it say to say it wont"
 					},
 					"response": []
+				},
+				{
+					"name": "Simple query - Status codes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ProxyAPI}}/https://httpstat.us/203",
+							"protocol": "{{ProxyAPI}}/https",
+							"host": [
+								"httpstat",
+								"us"
+							],
+							"path": [
+								"203"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "API",
+			"item": [
+				{
+					"name": "Collection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ProxyAPI}}/admin/collections?limit=10&skip=0",
+							"host": [
+								"{{ProxyAPI}}"
+							],
+							"path": [
+								"admin",
+								"collections"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "skip",
+									"value": "0"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -118,7 +171,7 @@
 	],
 	"variable": [
 		{
-			"id": "c039e98d-c1ac-4365-92c3-42e5583d9797",
+			"id": "8818ec8d-de15-449c-9bbe-16b7710c701a",
 			"key": "ProxyAPI",
 			"value": "http://localhost:5000"
 		}
