@@ -10,7 +10,7 @@ type Collection struct {
 }
 
 type repository interface {
-	List() ([]Collection, error)
+	List(limit int, skip int) ([]Collection, error)
 	Get(id int64) (*Collection, error)
 	Save(name string) (*Collection, error)
 }
@@ -26,8 +26,8 @@ func NewManager(r repository) *Manager {
 	}
 }
 
-func (m *Manager) List() ([]Collection, error) {
-	return m.repo.List()
+func (m *Manager) List(limit int, skip int) ([]Collection, error) {
+	return m.repo.List(limit, skip)
 }
 
 func (m *Manager) Get(id int64) (*Collection, error) {

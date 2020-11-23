@@ -18,11 +18,11 @@ func NewSQLRepository(db *sqlx.DB) *sqlRepo {
 	}
 }
 
-func (r *sqlRepo) List() ([]Collection, error) {
+func (r *sqlRepo) List(limit int, skip int) ([]Collection, error) {
 	cols := []Collection{}
 	err := r.db.Select(&cols, `
-		SELECT * FROM Collections
-	`)
+		SELECT * FROM Collections LIMIT ? OFFSET ?
+	`, limit, skip)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}

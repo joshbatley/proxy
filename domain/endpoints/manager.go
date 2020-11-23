@@ -7,11 +7,10 @@ import (
 
 // Endpoint returns a single endpoint
 type Endpoint struct {
-	ID           uuid.UUID `db:"ID"`
-	CollectionID int64     `db:"CollectionID"`
-	Status       int       `db:"PreferedStatus"`
-	Method       string    `db:"Method"`
-	URL          string    `db:"URL"`
+	ID     uuid.UUID `db:"ID"`
+	Status int       `db:"PreferedStatus"`
+	Method string    `db:"Method"`
+	URL    string    `db:"URL"`
 }
 
 // Repository -
