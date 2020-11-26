@@ -48,21 +48,20 @@ func DecodeBody(h http.Header, compressedBody []byte) ([]byte, error) {
 	compressedContent := compressedBody
 	br := bytes.NewReader(compressedContent)
 	var decompressor io.Reader
+	encoding := h.Get("Content-Encoding")
 
-	if ce := h.Get("Content-Encoding"); ce != "" {
-		switch ce {
-		case "br":
-			decompressor = brotli.NewReader(br)
-		case "deflate":
-			decompressor = flate.NewReader(br)
-		case "gzip":
-			decompressor, err = gzip.NewReader(br)
-			if err != nil {
-				decompressor = br
-			}
-		default:
+	switch encoding {
+	case "br":
+		decompressor = brotli.NewReader(br)
+	case "deflate":
+		decompressor = flate.NewReader(br)
+	case "gzip":
+		decompressor, err = gzip.NewReader(br)
+		if err != nil {
 			decompressor = br
 		}
+	default:
+		decompressor = br
 	}
 
 	content, err = ioutil.ReadAll(decompressor)
