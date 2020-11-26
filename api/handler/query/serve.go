@@ -88,7 +88,11 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
 		}
 		q.log.Info("Returned saved response")
-		body, _ := writers.EncodeBody(w.Header(), cache.body)
+		body, err := writers.EncodeBody(w.Header(), cache.body)
+		if err != nil {
+			writers.BadRequest(err, w)
+			return
+		}
 		w.Header().Set("x-Proxy", "served from cache")
 		w.WriteHeader(cache.status)
 		w.Write(body)
@@ -180,13 +184,18 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 		body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
 		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 
+		content, err := writers.DecodeBody(re.Header, body.Bytes())
+		if err != nil {
+			q.log.Info("Decoding body failed")
+			content = body.Bytes()
+		}
+
 		headers := new(bytes.Buffer)
 		for k, v := range re.Header {
 			fmt.Fprintf(headers, "%s|%s\n", k, strings.Join(v, " "))
 		}
-		content, _ := writers.DecodeBody(re.Header, body.Bytes())
 
-		err := q.responses.Save(
+		err = q.responses.Save(
 			ids.id,
 			re.Request.URL.String(),
 			headers.String(),

@@ -3,6 +3,7 @@ package admin
 import (
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/domain/collections"
 	"github.com/joshbatley/proxy/domain/endpoints"
@@ -40,9 +41,12 @@ func NewHandler(
 
 // Router -
 func (h Handler) Router(r *mux.Router) {
-	r.PathPrefix("/collections").Methods("GET").HandlerFunc(h.collection)
-	r.PathPrefix("/endpoints").Methods("GET").HandlerFunc(h.endpoint)
-	r.PathPrefix("/responses").Methods("GET").HandlerFunc(h.response)
+	r.PathPrefix("/collections").Methods("GET").Handler(addGzip(h.collection))
+	r.PathPrefix("/endpoints").Methods("GET").Handler(addGzip(h.endpoint))
+	r.PathPrefix("/responses").Methods("GET").Handler(addGzip(h.response))
 	r.NotFoundHandler = http.HandlerFunc(writers.ReturnNotFound)
+}
 
+func addGzip(h http.HandlerFunc) http.Handler {
+	return handlers.CompressHandler(http.HandlerFunc(h))
 }

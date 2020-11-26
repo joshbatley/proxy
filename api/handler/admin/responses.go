@@ -2,7 +2,6 @@ package admin
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,11 +31,10 @@ func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
 	p := re.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
 	limit, _ := strconv.Atoi(p.Get("limit"))
-	collectionID := p.Get("collection")
+	endpoint := p.Get("endpoint")
 
-	rs, err := h.responses.ListByEndpoint(collectionID, limit, skip)
+	rs, err := h.responses.ListByEndpoint(endpoint, limit, skip)
 	if err != nil {
-		log.Println(err)
 		writers.BadRequest(err, w)
 		return
 	}
@@ -50,14 +48,13 @@ func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
 				newHeader.Set(h[0], h[1])
 			}
 		}
-		content, _ := writers.DecodeBody(newHeader, r.Body)
 		Responses = append(Responses, response{
 			ID:       r.ID,
 			Status:   r.Status,
 			URL:      r.URL,
 			Method:   r.Method,
 			Headers:  r.Headers,
-			Body:     string(content),
+			Body:     string(r.Body),
 			DateTime: r.DateTime,
 		})
 	}
@@ -71,9 +68,6 @@ func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
 
 	j, _ := json.Marshal(res)
 	w.Header().Set("Content-Type", "application/json, text/plain, */*")
-
-	// w.Header().Set("Content-Encoding", "br")
 	w.WriteHeader(http.StatusOK)
 	w.Write(j)
-
 }
