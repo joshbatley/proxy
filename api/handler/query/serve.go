@@ -17,6 +17,7 @@ import (
 	"github.com/joshbatley/proxy/internal/writers"
 )
 
+// ModifyRsponse -
 type ModifyRsponse func(re *http.Response) error
 
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
@@ -87,10 +88,10 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
 		}
 		q.log.Info("Returned saved response")
-
+		body, _ := writers.EncodeBody(w.Header(), cache.body)
 		w.Header().Set("x-Proxy", "served from cache")
 		w.WriteHeader(cache.status)
-		w.Write(cache.body)
+		w.Write(body)
 		return
 	}
 }
@@ -183,12 +184,13 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 		for k, v := range re.Header {
 			fmt.Fprintf(headers, "%s|%s\n", k, strings.Join(v, " "))
 		}
+		content, _ := writers.DecodeBody(re.Header, body.Bytes())
 
 		err := q.responses.Save(
 			ids.id,
 			re.Request.URL.String(),
 			headers.String(),
-			body.Bytes(),
+			content,
 			re.StatusCode,
 			re.Request.Method,
 			ids.endpoint,
