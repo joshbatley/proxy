@@ -17,6 +17,8 @@ import (
 	"github.com/joshbatley/proxy/internal/writers"
 )
 
+type ModifyRsponse func(re *http.Response) error
+
 // Serve Sets up all the logic for a reverse proxy and save and sends cached versions
 func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
@@ -175,6 +177,7 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 		buf, _ := ioutil.ReadAll(re.Body)
 		body := new(bytes.Buffer)
 		body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
+		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 
 		headers := new(bytes.Buffer)
 		for k, v := range re.Header {
@@ -207,7 +210,6 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 			writers.CorsHeaders(re.Header)
 		}
 
-		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		return nil
 	}, q.log)
 }

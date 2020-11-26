@@ -18,6 +18,7 @@ type Repository interface {
 	Get(url string, method string, col int64) (*Endpoint, error)
 	GetByID(id int64) (*[]Endpoint, error)
 	Save(url string, method string, col int64) (uuid.UUID, error)
+	List(limit int, skip int) ([]Endpoint, error)
 }
 
 // Manager -
@@ -30,6 +31,11 @@ func NewManager(r Repository) *Manager {
 	return &Manager{
 		repo: r,
 	}
+}
+
+// List -
+func (m *Manager) List(limit int, skip int) ([]Endpoint, error) {
+	return m.repo.List(limit, skip)
 }
 
 // Get -

@@ -12,7 +12,7 @@ import (
 )
 
 func reverseProxy(
-	w http.ResponseWriter, r *http.Request, p *params.Params, mr func(r *http.Response) error, logger *zap.SugaredLogger,
+	w http.ResponseWriter, r *http.Request, p *params.Params, mr ModifyRsponse, logger *zap.SugaredLogger,
 ) {
 	director := func(req *http.Request) {
 		req.Header.Del("Origin")

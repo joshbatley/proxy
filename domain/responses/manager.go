@@ -4,9 +4,11 @@ import "github.com/google/uuid"
 
 // Response returns struct from the database
 type Response struct {
-	ID     uuid.UUID `db:"ID"`
-	Status int       `db:"Status"`
-	URL    string    `db:"URL"`
+	ID         uuid.UUID `db:"ID"`
+	EndpointID string    `db:"EndpointID"`
+	Status     int       `db:"Status"`
+	URL        string    `db:"URL"`
+	Method     string    `db:"Method"`
 	// Returns Headers as 'foo=bar; baz, other \n'
 	Headers  string `db:"Headers"`
 	Body     []byte `db:"Body"`
@@ -16,7 +18,7 @@ type Response struct {
 // Repository -
 type Repository interface {
 	Get(url string, endpoint uuid.UUID, method string) (*Response, error)
-	GetAllByCol(col int64) (*[]Response, error)
+	ListByEndpoint(endpoint string, limit int, skip int) ([]Response, error)
 	Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error
 	Delete(id uuid.UUID) error
 }
@@ -38,16 +40,16 @@ func (m *Manager) Get(url string, endpoint uuid.UUID, method string) (*Response,
 	return m.repo.Get(url, endpoint, method)
 }
 
-// GetAllByCol -
-func (m *Manager) GetAllByCol(col int64) (*[]Response, error) {
-	return m.repo.GetAllByCol(col)
+// ListByEndpoint -
+func (m *Manager) ListByEndpoint(endpoint string, limit int, skip int) ([]Response, error) {
+	return m.repo.ListByEndpoint(endpoint, limit, skip)
 }
 
 // Save -
 func (m *Manager) Save(
 	id uuid.UUID, url string, head string, body []byte, status int, method string, endpointID uuid.UUID,
 ) error {
-	if len(id) == 0 {
+	if id == uuid.Nil {
 		id = uuid.New()
 	}
 

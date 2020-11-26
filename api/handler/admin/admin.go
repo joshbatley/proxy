@@ -41,6 +41,8 @@ func NewHandler(
 // Router -
 func (h Handler) Router(r *mux.Router) {
 	r.PathPrefix("/collections").Methods("GET").HandlerFunc(h.collection)
+	r.PathPrefix("/endpoints").Methods("GET").HandlerFunc(h.endpoint)
+	r.PathPrefix("/responses").Methods("GET").HandlerFunc(h.response)
 	r.NotFoundHandler = http.HandlerFunc(writers.ReturnNotFound)
 
 }

@@ -20,6 +20,18 @@ func NewSQLRepository(db *sqlx.DB) *SQLRepo {
 	}
 }
 
+// List -
+func (r *SQLRepo) List(limit int, skip int) ([]Endpoint, error) {
+	cols := []Endpoint{}
+	err := r.db.Select(&cols, `
+		SELECT ID, PreferedStatus, Method, URL FROM Endpoints LIMIT ? OFFSET ?
+	`, limit, skip)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+	return cols, nil
+}
+
 // Get -
 func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 	e := Endpoint{}

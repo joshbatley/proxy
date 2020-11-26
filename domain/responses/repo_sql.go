@@ -21,20 +21,21 @@ func NewSQLRepository(db *sqlx.DB) *SQLRepo {
 	}
 }
 
-// GetAllByCol returns all response for collcetion
-func (r *SQLRepo) GetAllByCol(col int64) (*[]Response, error) {
+// ListByEndpoint returns all response for Collection
+func (r *SQLRepo) ListByEndpoint(endpoint string, limit int, skip int) ([]Response, error) {
 	d := []Response{}
 	err := r.db.Select(&d, `
-		SELECT ID, Body, Status, Headers, URL
+		SELECT *
 		FROM Responses
-		WHERE CollectionID=?
-	`, col)
+		WHERE EndpointID=?
+		LIMIT ? OFFSET ?
+	`, endpoint, limit, skip)
 
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
-	return &d, nil
+	return d, nil
 }
 
 // Get return all response where url and collection

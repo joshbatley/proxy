@@ -9,7 +9,7 @@ import (
 	"github.com/joshbatley/proxy/internal/writers"
 )
 
-type response struct {
+type collectionResponse struct {
 	Count int          `json:"count"`
 	Skip  int          `json:"skip"`
 	Limit int          `json:"limit"`
@@ -40,7 +40,7 @@ func (h *Handler) collection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := response{
+	res := collectionResponse{
 		Count: len(cs),
 		Skip:  skip,
 		Limit: limit,
