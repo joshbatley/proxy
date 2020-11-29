@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/google/uuid"
+	"github.com/joshbatley/proxy/api/admin/endpoint"
 	"github.com/joshbatley/proxy/domain/collections"
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/internal/utils"
@@ -20,16 +20,9 @@ type response struct {
 }
 
 type collection struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Endpoints []endpoint `json:"endpoints,omitempty"`
-}
-
-type endpoint struct {
-	ID     uuid.UUID `json:"id"`
-	Status int       `json:"status"`
-	Method string    `json:"method"`
-	URL    string    `json:"url"`
+	ID        string              `json:"id"`
+	Name      string              `json:"name"`
+	Endpoints []endpoint.Endpoint `json:"endpoints,omitempty"`
 }
 
 // Handler -
@@ -74,15 +67,15 @@ func (h *Handler) Selector(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var Endpoints []endpoint
+		var endpoints []endpoint.Endpoint
 		for _, e := range *d {
-			Endpoints = append(Endpoints, endpoint(e))
+			endpoints = append(endpoints, endpoint.Endpoint(e))
 		}
 
 		res.Data = append(res.Data, collection{
 			ID:        strconv.FormatInt(v.ID, 10),
 			Name:      v.Name,
-			Endpoints: Endpoints,
+			Endpoints: endpoints,
 		})
 	}
 

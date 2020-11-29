@@ -6,19 +6,20 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/joshbatley/proxy/domain/responses"
+	domain "github.com/joshbatley/proxy/domain/responses"
+
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
 
 type response struct {
-	Count int    `json:"count"`
-	Skip  int    `json:"skip"`
-	Limit int    `json:"limit"`
-	Data  []data `json:"data"`
+	Count int         `json:"count"`
+	Skip  int         `json:"skip"`
+	Limit int         `json:"limit"`
+	Data  []responses `json:"data"`
 }
 
-type data struct {
+type responses struct {
 	ID       uuid.UUID `json:"id"`
 	Status   int       `json:"status"`
 	URL      string    `json:"url"`
@@ -30,13 +31,13 @@ type data struct {
 
 // Handler Http handler for any query response
 type Handler struct {
-	responses *responses.Manager
+	responses *domain.Manager
 	log       *zap.SugaredLogger
 }
 
 // NewHandler constructs a new QueryHandler
 func NewHandler(
-	responses *responses.Manager,
+	responses *domain.Manager,
 	log *zap.SugaredLogger,
 ) Handler {
 	return Handler{
@@ -45,7 +46,7 @@ func NewHandler(
 	}
 }
 
-// Get
+// Get -
 func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 	p := re.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
@@ -62,11 +63,11 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 		Count: len(rs),
 		Skip:  skip,
 		Limit: limit,
-		Data:  make([]data, 0),
+		Data:  make([]responses, 0),
 	}
 
 	for _, r := range rs {
-		res.Data = append(res.Data, data{
+		res.Data = append(res.Data, responses{
 			ID:       r.ID,
 			Status:   r.Status,
 			URL:      r.URL,

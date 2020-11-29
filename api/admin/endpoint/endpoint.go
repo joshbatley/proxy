@@ -15,10 +15,10 @@ type response struct {
 	Count int        `json:"count"`
 	Skip  int        `json:"skip"`
 	Limit int        `json:"limit"`
-	Data  []endpoint `json:"data"`
+	Data  []Endpoint `json:"data"`
 }
 
-type endpoint struct {
+type Endpoint struct {
 	ID     uuid.UUID `json:"id"`
 	Status int       `json:"status"`
 	Method string    `json:"method"`
@@ -54,11 +54,11 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		Count: len(es),
 		Skip:  skip,
 		Limit: limit,
-		Data:  make([]endpoint, 0),
+		Data:  make([]Endpoint, 0),
 	}
 
 	for _, e := range es {
-		res.Data = append(res.Data, endpoint(e))
+		res.Data = append(res.Data, Endpoint(e))
 	}
 
 	j, _ := json.Marshal(res)
