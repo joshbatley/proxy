@@ -9,7 +9,7 @@ import (
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/domain/responses"
 	"github.com/joshbatley/proxy/domain/rules"
-	"github.com/joshbatley/proxy/internal/writers"
+	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -44,7 +44,7 @@ func (h Handler) Router(r *mux.Router) {
 	r.PathPrefix("/collections").Methods("GET").Handler(addGzip(h.collection))
 	r.PathPrefix("/endpoints").Methods("GET").Handler(addGzip(h.endpoint))
 	r.PathPrefix("/responses").Methods("GET").Handler(addGzip(h.response))
-	r.NotFoundHandler = http.HandlerFunc(writers.ReturnNotFound)
+	r.NotFoundHandler = http.HandlerFunc(utils.NotFound)
 }
 
 func addGzip(h http.HandlerFunc) http.Handler {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/joshbatley/proxy/internal/writers"
+	"github.com/joshbatley/proxy/internal/utils"
 )
 
 type endpointResponse struct {
@@ -22,7 +22,7 @@ func (h *Handler) endpoint(w http.ResponseWriter, r *http.Request) {
 
 	es, err := h.endpoints.List(limit, skip)
 	if err != nil {
-		writers.BadRequest(err, w)
+		utils.BadRequest(err, w)
 		return
 	}
 

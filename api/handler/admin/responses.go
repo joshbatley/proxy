@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/joshbatley/proxy/internal/writers"
+	"github.com/joshbatley/proxy/internal/utils"
 )
 
 type responseResponse struct {
@@ -35,7 +35,7 @@ func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
 
 	rs, err := h.responses.ListByEndpoint(endpoint, limit, skip)
 	if err != nil {
-		writers.BadRequest(err, w)
+		utils.BadRequest(err, w)
 		return
 	}
 	var Responses []response

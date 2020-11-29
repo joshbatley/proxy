@@ -11,10 +11,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/joshbatley/proxy/internal/encoder"
 	"github.com/joshbatley/proxy/internal/engine"
 	"github.com/joshbatley/proxy/internal/fail"
 	"github.com/joshbatley/proxy/internal/params"
-	"github.com/joshbatley/proxy/internal/writers"
+	"github.com/joshbatley/proxy/internal/utils"
 )
 
 // ModifyRsponse -
@@ -26,14 +27,14 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
 		q.log.Error("Param parse failed")
-		writers.BadRequest(err, w)
+		utils.BadRequest(err, w)
 		return
 	}
 
 	engine, err := q.loadEngine(params)
 	if err != nil {
 		q.log.Warn("Failed to load rules")
-		writers.BadRequest(err, w)
+		utils.BadRequest(err, w)
 		return
 	}
 	params.QueryURL = engine.Remapper()
@@ -41,7 +42,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check if method is OPTIONS and if Engine need to override
 	if r.Method == http.MethodOptions && engine.EnableCors() {
 		q.log.Info("Cors request")
-		writers.CorsHeaders(w.Header())
+		utils.Cors(w.Header())
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -51,7 +52,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		q.log.Info("Skipping cache check and proxing: ", params.QueryURL)
 		reverseProxy(w, r, params, func(re *http.Response) error {
 			if engine.EnableCors() {
-				writers.CorsHeaders(re.Header)
+				utils.Cors(re.Header)
 			}
 			return nil
 		}, q.log)
@@ -70,7 +71,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case err := <-errChannel:
-		writers.BadRequest(err, w)
+		utils.BadRequest(err, w)
 		return
 	case ids := <-proxyChannel:
 		q.proxyAndSave(w, r, params, ids, engine)
@@ -88,9 +89,9 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
 		}
 		q.log.Info("Returned saved response")
-		body, err := writers.EncodeBody(w.Header(), cache.body)
+		body, err := encoder.Compress(w.Header(), cache.body)
 		if err != nil {
-			writers.BadRequest(err, w)
+			utils.BadRequest(err, w)
 			return
 		}
 		w.Header().Set("x-Proxy", "served from cache")
@@ -184,21 +185,21 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 		body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
 		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 
-		content, err := writers.DecodeBody(re.Header, body.Bytes())
+		content, err := encoder.Decompress(re.Header, body.Bytes())
 		if err != nil {
 			q.log.Info("Decoding body failed")
 			content = body.Bytes()
 		}
 
-		headers := new(bytes.Buffer)
+		h := new(bytes.Buffer)
 		for k, v := range re.Header {
-			fmt.Fprintf(headers, "%s|%s\n", k, strings.Join(v, " "))
+			fmt.Fprintf(h, "%s|%s\n", k, strings.Join(v, " "))
 		}
 
 		err = q.responses.Save(
 			ids.id,
 			re.Request.URL.String(),
-			headers.String(),
+			h.String(),
 			content,
 			re.StatusCode,
 			re.Request.Method,
@@ -218,7 +219,7 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 
 		// Apply headers to skip inbuild security
 		if engine.EnableCors() {
-			writers.CorsHeaders(re.Header)
+			utils.Cors(re.Header)
 		}
 
 		return nil

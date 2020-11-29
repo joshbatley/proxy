@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/joshbatley/proxy/internal/writers"
+	"github.com/joshbatley/proxy/internal/utils"
 )
 
 type collectionResponse struct {
@@ -36,7 +36,7 @@ func (h *Handler) collection(w http.ResponseWriter, r *http.Request) {
 
 	cs, err := h.collections.List(limit, skip)
 	if err != nil {
-		writers.BadRequest(err, w)
+		utils.BadRequest(err, w)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *Handler) collection(w http.ResponseWriter, r *http.Request) {
 	for _, v := range cs {
 		d, err := h.endpoints.GetByID(v.ID)
 		if err != nil {
-			writers.BadRequest(err, w)
+			utils.BadRequest(err, w)
 			return
 		}
 

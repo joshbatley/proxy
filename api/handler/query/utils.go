@@ -7,7 +7,7 @@ import (
 	"github.com/joshbatley/proxy/internal/connection"
 	"github.com/joshbatley/proxy/internal/fail"
 	"github.com/joshbatley/proxy/internal/params"
-	"github.com/joshbatley/proxy/internal/writers"
+	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -29,10 +29,10 @@ func reverseProxy(
 		ModifyResponse: mr,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			if connection.IsOffline(nil) {
-				writers.BadRequest(fail.OfflineError(err), w)
+				utils.BadRequest(fail.OfflineError(err), w)
 			} else {
 				logger.Warn("Internal Error on reverse Proxy - ", err)
-				writers.BadRequest(fail.InternalError(err), w)
+				utils.BadRequest(fail.InternalError(err), w)
 			}
 		},
 	}
