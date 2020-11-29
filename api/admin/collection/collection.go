@@ -1,4 +1,4 @@
-package admin
+package collection
 
 import (
 	"encoding/json"
@@ -6,10 +6,13 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/joshbatley/proxy/domain/collections"
+	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/internal/utils"
+	"go.uber.org/zap"
 )
 
-type collectionResponse struct {
+type response struct {
 	Count int          `json:"count"`
 	Skip  int          `json:"skip"`
 	Limit int          `json:"limit"`
@@ -29,7 +32,24 @@ type endpoint struct {
 	URL    string    `json:"url"`
 }
 
-func (h *Handler) collection(w http.ResponseWriter, r *http.Request) {
+// Handler -
+type Handler struct {
+	collections *collections.Manager
+	endpoints   *endpoints.Manager
+	log         *zap.SugaredLogger
+}
+
+// NewHandler - Construct a new Handler
+func NewHandler(collections *collections.Manager, endpoints *endpoints.Manager, log *zap.SugaredLogger,
+) Handler {
+	return Handler{
+		collections,
+		endpoints,
+		log,
+	}
+}
+
+func (h *Handler) Selector(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
 	limit, _ := strconv.Atoi(p.Get("limit"))
@@ -40,11 +60,11 @@ func (h *Handler) collection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := collectionResponse{
+	res := response{
 		Count: len(cs),
 		Skip:  skip,
 		Limit: limit,
-		Data:  make([]collection, len(cs)),
+		Data:  make([]collection, 0),
 	}
 
 	for _, v := range cs {
@@ -65,6 +85,7 @@ func (h *Handler) collection(w http.ResponseWriter, r *http.Request) {
 			Endpoints: Endpoints,
 		})
 	}
+
 	j, _ := json.Marshal(res)
 	w.Header().Set("Content-Type", "application/json, text/plain, */*")
 	w.WriteHeader(http.StatusOK)

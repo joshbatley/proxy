@@ -12,7 +12,8 @@ type Rule struct {
 }
 
 type repository interface {
-	Get(id int64) ([]Rule, error)
+	GetByCollectionID(id int64) ([]Rule, error)
+	ListByCollectionID(collection string, limit int, skip int) ([]Rule, error)
 }
 
 type Manager struct {
@@ -26,7 +27,12 @@ func NewManager(r repository) *Manager {
 	}
 }
 
-// GetRules by collection ID
-func (m *Manager) Get(id int64) ([]Rule, error) {
-	return m.repo.Get(id)
+// GetByCollectionID by collection ID
+func (m *Manager) GetByCollectionID(id int64) ([]Rule, error) {
+	return m.repo.GetByCollectionID(id)
+}
+
+// ListByCollectionID -
+func (m *Manager) ListByCollectionID(collection string, limit int, skip int) ([]Rule, error) {
+	return m.repo.ListByCollectionID(collection, limit, skip)
 }

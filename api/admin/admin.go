@@ -5,6 +5,10 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/joshbatley/proxy/api/admin/collection"
+	"github.com/joshbatley/proxy/api/admin/endpoint"
+	"github.com/joshbatley/proxy/api/admin/response"
+	"github.com/joshbatley/proxy/api/admin/rule"
 	"github.com/joshbatley/proxy/domain/collections"
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/domain/responses"
@@ -41,9 +45,16 @@ func NewHandler(
 
 // Router -
 func (h Handler) Router(r *mux.Router) {
-	r.PathPrefix("/collections").Methods("GET").Handler(addGzip(h.collection))
-	r.PathPrefix("/endpoints").Methods("GET").Handler(addGzip(h.endpoint))
-	r.PathPrefix("/responses").Methods("GET").Handler(addGzip(h.response))
+	cols := collection.NewHandler(h.collections, h.endpoints, h.log)
+	ends := endpoint.NewHandler(h.endpoints, h.log)
+	res := response.NewHandler(h.responses, h.log)
+	rule := rule.NewHandler(h.rules, h.log)
+
+	r.PathPrefix("/collections/selector").Methods("GET").Handler(addGzip(cols.Selector))
+	r.PathPrefix("/endpoints").Methods("GET").Handler(addGzip(ends.Get))
+	r.PathPrefix("/responses").Methods("GET").Handler(addGzip(res.Get))
+	r.PathPrefix("/rules").Methods("GET").Handler(addGzip(rule.Get))
+
 	r.NotFoundHandler = http.HandlerFunc(utils.NotFound)
 }
 

@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/joshbatley/proxy/api/handler/admin"
-	"github.com/joshbatley/proxy/api/handler/client"
-	"github.com/joshbatley/proxy/api/handler/query"
+	"github.com/joshbatley/proxy/api/admin"
+	"github.com/joshbatley/proxy/api/client"
+	"github.com/joshbatley/proxy/api/query"
 	"github.com/joshbatley/proxy/domain/collections"
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/domain/responses"

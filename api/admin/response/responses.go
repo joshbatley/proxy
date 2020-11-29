@@ -1,23 +1,24 @@
-package admin
+package response
 
 import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
+	"github.com/joshbatley/proxy/domain/responses"
 	"github.com/joshbatley/proxy/internal/utils"
+	"go.uber.org/zap"
 )
 
-type responseResponse struct {
-	Count int        `json:"count"`
-	Skip  int        `json:"skip"`
-	Limit int        `json:"limit"`
-	Data  []response `json:"data"`
+type response struct {
+	Count int    `json:"count"`
+	Skip  int    `json:"skip"`
+	Limit int    `json:"limit"`
+	Data  []data `json:"data"`
 }
 
-type response struct {
+type data struct {
 	ID       uuid.UUID `json:"id"`
 	Status   int       `json:"status"`
 	URL      string    `json:"url"`
@@ -27,7 +28,25 @@ type response struct {
 	DateTime int64     `json:"datetime"`
 }
 
-func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
+// Handler Http handler for any query response
+type Handler struct {
+	responses *responses.Manager
+	log       *zap.SugaredLogger
+}
+
+// NewHandler constructs a new QueryHandler
+func NewHandler(
+	responses *responses.Manager,
+	log *zap.SugaredLogger,
+) Handler {
+	return Handler{
+		responses,
+		log,
+	}
+}
+
+// Get
+func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 	p := re.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
 	limit, _ := strconv.Atoi(p.Get("limit"))
@@ -38,17 +57,16 @@ func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
 		utils.BadRequest(err, w)
 		return
 	}
-	var Responses []response
+
+	res := response{
+		Count: len(rs),
+		Skip:  skip,
+		Limit: limit,
+		Data:  make([]data, 0),
+	}
 
 	for _, r := range rs {
-		newHeader := make(http.Header, 0)
-		for _, i := range strings.Split(r.Headers, "\n") {
-			h := strings.Split(i, "|")
-			if len(h) >= 2 {
-				newHeader.Set(h[0], h[1])
-			}
-		}
-		Responses = append(Responses, response{
+		res.Data = append(res.Data, data{
 			ID:       r.ID,
 			Status:   r.Status,
 			URL:      r.URL,
@@ -57,13 +75,6 @@ func (h *Handler) response(w http.ResponseWriter, re *http.Request) {
 			Body:     string(r.Body),
 			DateTime: r.DateTime,
 		})
-	}
-
-	res := responseResponse{
-		Count: len(rs),
-		Skip:  skip,
-		Limit: limit,
-		Data:  Responses,
 	}
 
 	j, _ := json.Marshal(res)

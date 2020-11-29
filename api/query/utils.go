@@ -27,7 +27,7 @@ func (q *Handler) loadEngine(params *params.Params) (*engine.RuleEngine, error) 
 	}
 
 	// With colleciton load rules for store
-	rules, err := q.rules.Get(params.Collection)
+	rules, err := q.rules.GetByCollectionID(params.Collection)
 	if err != nil {
 		q.log.Warn("Failed to get rules", err)
 		return nil, err
