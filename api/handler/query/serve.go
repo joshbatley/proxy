@@ -59,120 +59,43 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cachedChannel := make(chan response)
-	proxyChannel := make(chan ids)
-	errChannel := make(chan error)
+	ids, cache, err := q.checkResponses(params, r, engine)
 
-	defer close(cachedChannel)
-	defer close(proxyChannel)
-	defer close(errChannel)
-
-	go q.checkResponses(params, r, engine, cachedChannel, proxyChannel, errChannel)
-
-	select {
-	case err := <-errChannel:
+	if err != nil {
 		utils.BadRequest(err, w)
 		return
-	case ids := <-proxyChannel:
+	}
+
+	if ids.endpoint != uuid.Nil || ids.id != uuid.Nil {
 		q.proxyAndSave(w, r, params, ids, engine)
 		return
-	case cache := <-cachedChannel:
-		for _, i := range strings.Split(cache.headers, "\n") {
-			h := strings.Split(i, "|")
-			if len(h) >= 2 {
-				w.Header().Set(h[0], h[1])
-			}
-		}
-		if sleepTime := engine.GetSleepTime(); sleepTime > 0 {
-			q.log.Infof("Sleeping for %dms", sleepTime)
-			diff := time.Since(startTime).Milliseconds()
-			time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
-		}
-		q.log.Info("Returned saved response")
-		body, err := encoder.Compress(w.Header(), cache.body)
-		if err != nil {
-			utils.BadRequest(err, w)
-			return
-		}
-		w.Header().Set("x-Proxy", "served from cache")
-		w.WriteHeader(cache.status)
-		w.Write(body)
-		return
-	}
-}
-
-func (q *Handler) loadEngine(params *params.Params) (*engine.RuleEngine, error) {
-	// Check the collection exist (if not default)
-	col, err := q.collections.Get(params.Collection)
-	if err == fail.ErrNoData {
-		q.log.Warn("No collection found")
-		return nil, fail.MissingColErr(err)
-	}
-	var urls []string
-	if col != nil {
-		urls = strings.Split(col.HealthCheckURLs.String, ",")
 	}
 
-	// With colleciton load rules for store
-	rules, err := q.rules.Get(params.Collection)
-	if err != nil {
-		q.log.Warn("Failed to get rules", err)
-		return nil, err
-	}
-
-	// Convert rules type
-	engineRules := make([]engine.Rule, len(rules))
-	for _, v := range rules {
-		engineRules = append(engineRules, engine.Rule(v))
-	}
-
-	engine := &engine.RuleEngine{}
-
-	// pass rules to engine
-	engine.LoadRules(params.QueryURL, params.Collection, engineRules, urls)
-
-	return engine, nil
-}
-
-func (q *Handler) checkResponses(
-	params *params.Params, r *http.Request, engine *engine.RuleEngine,
-	cachedChannel chan response, proxyChannel chan ids, errChannel chan error,
-) {
-	endpoint, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
-	if err != nil {
-		errChannel <- err
-		return
-	}
-
-	res, err := q.responses.Get(
-		params.QueryURL.String(),
-		endpoint,
-		r.Method,
-	)
-	if err != nil && err != fail.ErrNoData {
-		errChannel <- err
-		return
-	}
-
-	if err == fail.ErrNoData || res == nil {
-		q.log.Info("No data found proxy request")
-		proxyChannel <- ids{endpoint: endpoint, id: uuid.Nil}
-		return
-
-	}
-
-	if !engine.HasExpired(res.DateTime) {
-		cachedChannel <- response{
-			headers: res.Headers,
-			status:  res.Status,
-			body:    res.Body,
-		}
-		return
-	}
-
-	q.log.Info("Response has expired - refresh data")
-	proxyChannel <- ids{endpoint: endpoint, id: res.ID}
+	q.cacheResponse(w, cache, engine, startTime)
 	return
+}
+
+func (q *Handler) cacheResponse(w http.ResponseWriter, cache *response, engine *engine.RuleEngine, startTime time.Time) {
+	for _, i := range strings.Split(cache.headers, "\n") {
+		h := strings.Split(i, "|")
+		if len(h) >= 2 {
+			w.Header().Set(h[0], h[1])
+		}
+	}
+	if sleepTime := engine.GetSleepTime(); sleepTime > 0 {
+		q.log.Infof("Sleeping for %dms", sleepTime)
+		diff := time.Since(startTime).Milliseconds()
+		time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
+	}
+	q.log.Info("Returned saved response")
+	body, err := encoder.Compress(w.Header(), cache.body)
+	if err != nil {
+		utils.BadRequest(err, w)
+		return
+	}
+	w.Header().Set("x-Proxy", "served from cache")
+	w.WriteHeader(cache.status)
+	w.Write(body)
 }
 
 func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
