@@ -7,5 +7,7 @@
 			"path": "webapp"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"typescript.tsdk": "webapp/node_modules/typescript/lib"
+	}
 }
