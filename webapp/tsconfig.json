@@ -1,22 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "noImplicitReturns": true,
     "jsx": "react-jsx",
     "baseUrl": "./src",
     "outDir": "dist/client",
@@ -24,10 +13,27 @@
       "node",
       "jest"
     ],
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "rootDir": "./src",
+    "target": "esnext",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "module": "esNext",
+    "declaration": true,
+    "declarationMap": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true
   },
   "include": [
-    "src"
+    "src",
+    "src/types"
   ],
   "exclude": [
     "node_modules",

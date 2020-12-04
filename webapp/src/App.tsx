@@ -1,22 +1,18 @@
 import React from 'react';
+import { Provider } from 'use-http'
+import useSelector from 'api/selector'
 
-function App() {
+const App = () => {
+  const { data, loading, next } = useSelector({ limit: 10 });
+
   return (
-    <div className="bg-black text-white hover:text-red-500 ">
-      <header className="App-header">
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Provider>
+      <div className="bg-black text-white hover:text-red-500">
+        <header className="App-header">
+          <button onClick={() => next()}>next page</button>
+        </header>
+      </div>
+    </Provider>
   );
 }
 

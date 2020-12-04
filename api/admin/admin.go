@@ -56,6 +56,7 @@ func (h Handler) Router(r *mux.Router) {
 	r.PathPrefix("/rules").Methods("GET").Handler(addGzip(rule.Get))
 
 	r.NotFoundHandler = http.HandlerFunc(utils.NotFound)
+	r.Use(handlers.CORS())
 }
 
 func addGzip(h http.HandlerFunc) http.Handler {
