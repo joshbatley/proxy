@@ -1,0 +1,6 @@
+build/
+scripts/
+ServiceWorker.ts
+setupTests.ts
+react-app-env.d.ts
+types/
