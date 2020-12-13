@@ -1,7 +1,6 @@
 package response
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -11,13 +10,6 @@ import (
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
-
-type response struct {
-	Count int         `json:"count"`
-	Skip  int         `json:"skip"`
-	Limit int         `json:"limit"`
-	Data  []responses `json:"data"`
-}
 
 type responses struct {
 	ID       uuid.UUID `json:"id"`
@@ -59,15 +51,9 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 		return
 	}
 
-	res := response{
-		Count: len(rs),
-		Skip:  skip,
-		Limit: limit,
-		Data:  make([]responses, 0),
-	}
-
+	data := []responses{}
 	for _, r := range rs {
-		res.Data = append(res.Data, responses{
+		data = append(data, responses{
 			ID:       r.ID,
 			Status:   r.Status,
 			URL:      r.URL,
@@ -78,8 +64,6 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 		})
 	}
 
-	j, _ := json.Marshal(res)
-	w.Header().Set("Content-Type", "application/json, text/plain, */*")
-	w.WriteHeader(http.StatusOK)
-	w.Write(j)
+	utils.Response(w, data, skip, limit)
+
 }

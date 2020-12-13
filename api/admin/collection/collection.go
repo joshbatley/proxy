@@ -1,7 +1,6 @@
 package collection
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -11,13 +10,6 @@ import (
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
-
-type response struct {
-	Count int          `json:"count"`
-	Skip  int          `json:"skip"`
-	Limit int          `json:"limit"`
-	Data  []collection `json:"data"`
-}
 
 type collection struct {
 	ID        string              `json:"id"`
@@ -53,13 +45,7 @@ func (h *Handler) Selector(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := response{
-		Count: len(cs),
-		Skip:  skip,
-		Limit: limit,
-		Data:  make([]collection, 0),
-	}
-
+	data := []collection{}
 	for _, v := range cs {
 		d, err := h.endpoints.GetByID(v.ID)
 		if err != nil {
@@ -72,15 +58,12 @@ func (h *Handler) Selector(w http.ResponseWriter, r *http.Request) {
 			endpoints = append(endpoints, endpoint.Endpoint(e))
 		}
 
-		res.Data = append(res.Data, collection{
+		data = append(data, collection{
 			ID:        strconv.FormatInt(v.ID, 10),
 			Name:      v.Name,
 			Endpoints: endpoints,
 		})
 	}
 
-	j, _ := json.Marshal(res)
-	w.Header().Set("Content-Type", "application/json, text/plain, */*")
-	w.WriteHeader(http.StatusOK)
-	w.Write(j)
+	utils.Response(w, data, skip, limit)
 }

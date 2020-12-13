@@ -1,7 +1,6 @@
 package rule
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -9,13 +8,6 @@ import (
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
-
-type response struct {
-	Count int    `json:"count"`
-	Skip  int    `json:"skip"`
-	Limit int    `json:"limit"`
-	Data  []rule `json:"data"`
-}
 
 type rule struct {
 	Pattern      string `json:"pattern"`
@@ -54,15 +46,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := response{
-		Count: len(rs),
-		Skip:  skip,
-		Limit: limit,
-		Data:  make([]rule, 0),
-	}
-
+	data := []rule{}
 	for _, r := range rs {
-		res.Data = append(res.Data, rule{
+		data = append(data, rule{
 			Pattern:      r.Pattern,
 			SaveResponse: r.SaveResponse,
 			ForceCors:    r.ForceCors,
@@ -72,10 +58,5 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 			RemapRegex:   r.RemapRegex,
 		})
 	}
-
-	j, _ := json.Marshal(res)
-	w.Header().Set("Content-Type", "application/json, text/plain, */*")
-	w.WriteHeader(http.StatusOK)
-	w.Write(j)
-
+	utils.Response(w, data, skip, limit)
 }

@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -10,13 +9,6 @@ import (
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
-
-type response struct {
-	Count int        `json:"count"`
-	Skip  int        `json:"skip"`
-	Limit int        `json:"limit"`
-	Data  []Endpoint `json:"data"`
-}
 
 type Endpoint struct {
 	ID     uuid.UUID `json:"id"`
@@ -50,19 +42,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(err, w)
 		return
 	}
-	res := response{
-		Count: len(es),
-		Skip:  skip,
-		Limit: limit,
-		Data:  make([]Endpoint, 0),
-	}
 
+	data := []Endpoint{}
 	for _, e := range es {
-		res.Data = append(res.Data, Endpoint(e))
+		data = append(data, Endpoint(e))
 	}
 
-	j, _ := json.Marshal(res)
-	w.Header().Set("Content-Type", "application/json, text/plain, */*")
-	w.WriteHeader(http.StatusOK)
-	w.Write(j)
+	utils.Response(w, data, skip, limit)
+
 }
