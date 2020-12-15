@@ -19,3 +19,4 @@ rules:
   "@typescript-eslint/no-non-null-assertion": 0
   "@typescript-eslint/explicit-module-boundary-types": 0
   react/prop-types: 0
+  import/extentions: 0

@@ -5,13 +5,12 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	domain "github.com/joshbatley/proxy/domain/responses"
-
+	"github.com/joshbatley/proxy/domain/responses"
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
 )
 
-type responses struct {
+type data struct {
 	ID       uuid.UUID `json:"id"`
 	Status   int       `json:"status"`
 	URL      string    `json:"url"`
@@ -23,17 +22,17 @@ type responses struct {
 
 // Handler Http handler for any query response
 type Handler struct {
-	responses *domain.Manager
-	log       *zap.SugaredLogger
+	repo *responses.Manager
+	log  *zap.SugaredLogger
 }
 
 // NewHandler constructs a new QueryHandler
 func NewHandler(
-	responses *domain.Manager,
+	repo *responses.Manager,
 	log *zap.SugaredLogger,
 ) Handler {
 	return Handler{
-		responses,
+		repo,
 		log,
 	}
 }
@@ -45,15 +44,15 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 	limit, _ := strconv.Atoi(p.Get("limit"))
 	endpoint := p.Get("endpoint")
 
-	rs, err := h.responses.ListByEndpoint(endpoint, limit, skip)
+	rs, err := h.repo.ListByEndpoint(endpoint, limit, skip)
 	if err != nil {
 		utils.BadRequest(err, w)
 		return
 	}
 
-	data := []responses{}
+	d := []data{}
 	for _, r := range rs {
-		data = append(data, responses{
+		d = append(d, data{
 			ID:       r.ID,
 			Status:   r.Status,
 			URL:      r.URL,
@@ -64,6 +63,6 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 		})
 	}
 
-	utils.Response(w, data, skip, limit)
+	utils.Response(w, d, skip, limit)
 
 }
