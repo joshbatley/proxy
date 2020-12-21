@@ -7,7 +7,7 @@ const App: React.FC = () => {
   const { data, loading, next } = useSelector({ limit: 5 });
 
   return (
-    <Layout sidebar={<Sidebar />}>
+    <Layout sidebar={<Sidebar data={data} />}>
       <div>
         <header className="App-header">
           <button type="button" onClick={() => next()}>next page</button>

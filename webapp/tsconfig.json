@@ -33,7 +33,7 @@
   },
   "include": [
     "src",
-    "se"
+    "src/**/*",
   ],
   "exclude": [
     "node_modules",
