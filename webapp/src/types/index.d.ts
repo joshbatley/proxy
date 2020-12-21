@@ -1,10 +1,10 @@
 export type Collections = {
   id: string;
   name: string
-  endpoints: Endpoints[]
+  endpoints: Endpoint[]
 };
 
-export type Endpoints = {
+export type Endpoint = {
   id: string;
   status: number;
   url: string;

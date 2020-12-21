@@ -20,3 +20,5 @@ rules:
   "@typescript-eslint/explicit-module-boundary-types": 0
   react/prop-types: 0
   import/extentions: 0
+  react/jsx-props-no-spreading: 0
+  "@typescript-eslint/ban-ts-comment": 0
