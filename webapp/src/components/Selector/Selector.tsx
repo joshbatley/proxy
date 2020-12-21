@@ -16,7 +16,7 @@ const Chev: React.FC<{ isOpen: boolean }> = ({ isOpen }) => (
 const BaseEnd: React.FC<{ className: string, style: any, e: any }> = ({
   className, style, e, ...other
 }) => (
-  <div key={e.id} className={className} {...other} style={style}>
+  <div key={e.id} className={`py-1 px-2 truncate cursor-pointer leading-normal flex content-center flex-auto text-sm ${className}`} {...other} style={style}>
     <MethodTag method={e.method} />
     <span className="truncate leading-5">{e.url}</span>
   </div>
@@ -28,17 +28,15 @@ const EndpointComp: React.FC<{e: Endpoint}> = ({
   const [isHere, setHere] = React.useState<{e: Endpoint, x: number, y: number} | null>(null);
 
   let style = {};
-  let classNames = 'py-1 px-2 truncate cursor-pointer leading-normal flex content-center flex-auto text-sm';
+  let classNames = '';
   if (isHere) {
     style = {
-      position: 'absolute',
       top: isHere.y,
       left: isHere.x,
-      pointerEvents: 'none',
     };
-    classNames += ' bg-gray-200 rounded';
+    classNames += 'bg-gray-200 rounded absolute pointer-events-none';
   } else {
-    classNames += ' hover:bg-gray-200  rounded-l';
+    classNames += 'hover:bg-gray-200 rounded-l';
   }
 
   function hover(ev: any, es: Endpoint) {
@@ -56,7 +54,6 @@ const EndpointComp: React.FC<{e: Endpoint}> = ({
     <>
       {isHere && ReactDOM.createPortal(<BaseEnd e={e} className={classNames} style={style} />, document.getElementById('portal')!)}
       <BaseEnd
-        className={classNames}
         e={e}
       // @ts-ignore
         onMouseOver={(ev: any) => hover(ev, e)}
