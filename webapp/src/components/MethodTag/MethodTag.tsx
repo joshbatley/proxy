@@ -4,12 +4,18 @@ type Props = {
   method: string;
 };
 
-const map = {
-  GET: 'GET',
-  POST: 'POST',
-  PUT: 'PUT',
+type Map = {
+  name?: string;
+  color?: string;
+  bg?: string;
+};
+
+const methodValues = {
+  GET: { name: 'GET', color: 'text-green-900', bg: 'bg-green-100' },
+  POST: { name: 'POST', color: 'text-yellow-900', bg: 'bg-yellow-100' },
+  PUT: { name: 'PUT', color: 'text-blue-900', bg: 'bg-blue-100' },
   PATCH: 'PATCH',
-  DELETE: 'DEL',
+  DELETE: { name: 'DEL', color: 'text-red-900', bg: 'bg-red-100' },
   COPY: 'COPY',
   HEAD: 'HEAD',
   OPTIONS: 'OPT',
@@ -20,26 +26,33 @@ const map = {
   UNLOCK: 'UNLCK',
   PROPFIND: 'PROP',
   VIEW: 'VIEW',
-} as Record<string, string>;
+} as Record<string, Map | string>;
 
-// {
-//   name: ''
-//   color: '',
-//   background: '',
-// }
+function mapper(m: string) {
+  let color = 'text-gray-700';
+  let bg = 'bg-gray-300';
 
-const MethodTag: React.FC<Props> = ({ method }) => {
-  let color = '';
-  const isGet = method === 'GET';
-
-  if (isGet) {
-    color += 'bg-green-100 text-green-900';
-  } else {
-    color += 'bg-gray-300 text-gray-700';
+  let mapped = methodValues[m];
+  if (typeof mapped === 'string') {
+    return {
+      name: mapped || m,
+      color,
+      bg,
+    };
   }
 
+  return {
+    name: mapped.name || m,
+    color: mapped.color || color,
+    bg: mapped.bg || bg,
+  };
+}
+
+let classes = 'min-w-min w-11 font-bold text-xxs p-1 mr-2 rounded-md leading-3 float-left text-center flex-shrink-0';
+const MethodTag: React.FC<Props> = ({ method }) => {
+  let mapped = mapper(method);
   return (
-    <div className={`min-w-min w-11 font-bold text-xxs p-1 mr-2 rounded leading-3 float-left text-center ${color} flex-shrink-0`}>{map[method]}</div>
+    <div className={`${classes} ${mapped.color} ${mapped.bg}`}>{mapped.name}</div>
   );
 };
 

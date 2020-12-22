@@ -8,7 +8,7 @@ type Props = {
 };
 
 const Sidebar: React.FC<Props> = ({ data }) => (
-  <aside className="border-r h-screen w-full">
+  <aside className="h-screen w-full">
     <div className="border-b border-gray-200">
       <Logo />
     </div>
