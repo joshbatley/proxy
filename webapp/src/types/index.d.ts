@@ -10,3 +10,13 @@ export type Endpoint = {
   url: string;
   method: string;
 };
+
+export type Response = {
+  id:  string;
+  status:  number;
+  url:  string;
+  method: string;
+  headers: string;
+  body: string;
+  datetime: number;
+}

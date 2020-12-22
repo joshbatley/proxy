@@ -47,7 +47,7 @@ func (h *Handler) Selector(w http.ResponseWriter, r *http.Request) {
 
 	data := []collection{}
 	for _, v := range cs {
-		d, err := h.endpoints.GetByID(v.ID)
+		d, err := h.endpoints.GetByColID(v.ID)
 		if err != nil {
 			utils.BadRequest(err, w)
 			return

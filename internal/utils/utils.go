@@ -59,5 +59,4 @@ func Response(w http.ResponseWriter, d interface{}, l int, s int) {
 	w.Header().Set("Content-Type", "application/json, text/plain, */*")
 	w.WriteHeader(http.StatusOK)
 	w.Write(j)
-
 }

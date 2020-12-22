@@ -6,8 +6,8 @@ type Props = {
 
 const Layout: React.FC<Props> = ({ children, sidebar }) => (
   <div className="flex h-full">
-    <div className="w-1/4 h-auto shadow overflow-hidden">{sidebar}</div>
-    <div className="w-full max-h-full flex-auto">
+    <div className="w-1/2 sm:w-1/3 md:w-1/4 xl:w-1/5 h-auto overflow-hidden border-r">{sidebar}</div>
+    <div className="max-h-full flex-auto">
       {children}
     </div>
   </div>

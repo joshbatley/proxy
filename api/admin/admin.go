@@ -51,6 +51,7 @@ func (h Handler) Router(r *mux.Router) {
 	rule := rule.NewHandler(h.rules, h.log)
 
 	r.PathPrefix("/collections/selector").Methods("GET").Handler(addGzip(cols.Selector))
+	r.PathPrefix("/endpoints/{id}").Methods("GET").Handler(addGzip(ends.GetById))
 	r.PathPrefix("/endpoints").Methods("GET").Handler(addGzip(ends.Get))
 	r.PathPrefix("/responses").Methods("GET").Handler(addGzip(res.Get))
 	r.PathPrefix("/rules").Methods("GET").Handler(addGzip(rule.Get))

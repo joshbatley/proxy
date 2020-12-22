@@ -52,8 +52,8 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 	return &e, nil
 }
 
-// GetByID -
-func (r *SQLRepo) GetByID(id int64) (*[]Endpoint, error) {
+// GetByColID -
+func (r *SQLRepo) GetByColID(id int64) (*[]Endpoint, error) {
 	e := []Endpoint{}
 	err := r.db.Select(&e, `
 		SELECT ID, PreferedStatus, Method, URL FROM Endpoints WHERE CollectionID=?
@@ -64,6 +64,20 @@ func (r *SQLRepo) GetByID(id int64) (*[]Endpoint, error) {
 	}
 
 	return &e, nil
+}
+
+// GetByID -
+func (r *SQLRepo) GetByID(id uuid.UUID) ([]Endpoint, error) {
+	e := []Endpoint{}
+	err := r.db.Select(&e, `
+		SELECT ID, PreferedStatus, Method, URL FROM Endpoints WHERE ID=?
+	`, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }
 
 // Save -

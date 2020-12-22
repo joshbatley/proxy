@@ -1,10 +1,12 @@
 package endpoint
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/domain/endpoints"
 	"github.com/joshbatley/proxy/internal/utils"
 	"go.uber.org/zap"
@@ -49,5 +51,24 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.Response(w, data, skip, limit)
+}
 
+func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	es, err := h.endpoints.GetByID(id)
+	if err != nil {
+		utils.BadRequest(err, w)
+		return
+	}
+
+	data := []Endpoint{}
+	for _, e := range es {
+		data = append(data, Endpoint(e))
+	}
+
+	j, _ := json.Marshal(data)
+	w.Header().Set("Content-Type", "application/json, text/plain, */*")
+	w.WriteHeader(http.StatusOK)
+	w.Write(j)
 }

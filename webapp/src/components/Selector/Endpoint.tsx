@@ -8,7 +8,7 @@ interface BaseProps extends React.ComponentPropsWithoutRef<'div'> {
   truncate?: boolean;
 }
 
-let baseClasses = 'py-1 px-2 cursor-pointer leading-normal flex content-center flex-auto text-sm hover:bg-blue-50 rounded-l-md';
+let baseClasses = 'hover:shadow py-1.5 px-2 cursor-pointer leading-normal flex content-center flex-auto text-sm hover:bg-gray-100 rounded-l text-gray-700';
 const BaseEnd: React.FC<BaseProps> = ({
   className, truncate, data, ...other
 }) => (
@@ -22,10 +22,11 @@ const BaseEnd: React.FC<BaseProps> = ({
 );
 
 type Props = {
-  data: Endpoint
+  data: Endpoint;
+  handleClick: (id: string) => void;
 };
 
-const EndpointLink: React.FC<Props> = ({ data }) => {
+const EndpointLink: React.FC<Props> = ({ data, handleClick }) => {
   let [showTooltip, setTooltip] = React.useState<{x: number, y: number} | null>(null);
 
   function hover(e: React.MouseEvent<HTMLDivElement>) {
@@ -47,7 +48,7 @@ const EndpointLink: React.FC<Props> = ({ data }) => {
         <Portal>
           <BaseEnd
             data={data}
-            className="bg-gray-100 rounded-md absolute pointer-events-none z-5"
+            className="bg-gray-100 shadow rounded absolute pointer-events-none z-5 "
             style={{
               top: showTooltip.y,
               left: showTooltip.x,
@@ -57,8 +58,9 @@ const EndpointLink: React.FC<Props> = ({ data }) => {
       )}
       <BaseEnd
         data={data}
-        className="z-10 relative"
+        className={`z-10 relative ${showTooltip && 'hover:shadow-none'}`}
         truncate={!showTooltip}
+        onClick={() => handleClick(data.id)}
         onMouseOver={hover}
         onMouseLeave={() => setTooltip(null)}
       />
