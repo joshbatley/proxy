@@ -9,6 +9,7 @@ interface BaseProps extends React.ComponentPropsWithoutRef<'div'> {
 }
 
 let baseClasses = 'hover:shadow py-1.5 px-2 cursor-pointer leading-normal flex content-center flex-auto text-sm hover:bg-gray-100 rounded-l text-gray-700';
+
 const BaseEnd: React.FC<BaseProps> = ({
   className, truncate, data, ...other
 }) => (
@@ -42,6 +43,7 @@ const EndpointLink: React.FC<Props> = ({ data, handleClick }) => {
       }
     }
   }
+
   return (
     <>
       {showTooltip && (

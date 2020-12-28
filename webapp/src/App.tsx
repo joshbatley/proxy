@@ -11,10 +11,10 @@ import Placeholder from 'pages/placeholder';
 import Response from 'pages/response';
 
 const App: React.FC = () => {
-  const [id, setId] = useState<string | null>(null);
+  let [id, setId] = useState<string | null>(null);
 
-  const { data: res, loading: resLoading } = useResponse({ limit: 1, id });
-  const { data, loading, next } = useSelector({ limit: 10 });
+  let { data: res, loading: resLoading } = useResponse({ limit: 1, id });
+  let { data, loading, next } = useSelector({ limit: 10 });
 
   return (
     <Layout sidebar={<Sidebar data={data} handleClick={setId} />}>

@@ -1,5 +1,4 @@
 import usePagination from 'hooks/usePagination';
-
 import routes from 'services/app-settings';
 import type { Response } from 'types';
 
@@ -9,7 +8,7 @@ type Params = {
 };
 
 const useResponse = ({ limit, id }: Params) => {
-  const {
+  let {
     data, error, loading, next,
   } = usePagination<Response>({ input: `${routes.response}?endpoint=${id}`, limit });
   return {

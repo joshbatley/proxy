@@ -7,7 +7,7 @@ type Params = {
 };
 
 const useSelector = ({ limit }: Params) => {
-  const {
+  let {
     data, error, loading, next,
   } = usePagination<Collections>({ input: routes.selector, limit });
   return {
