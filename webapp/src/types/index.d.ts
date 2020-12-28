@@ -20,3 +20,11 @@ export type Response = {
   body: string;
   datetime: number;
 }
+
+
+export type Wrapped<T> = {
+  count: number;
+  skip: number;
+  limit: number;
+  data: T[];
+};

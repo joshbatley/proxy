@@ -65,5 +65,5 @@ func (h *Handler) Selector(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	utils.Response(w, data, skip, limit)
+	utils.Response(w, data, limit, skip)
 }
