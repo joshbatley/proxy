@@ -14,7 +14,7 @@ const App: React.FC = () => {
   const [id, setId] = useState<string | null>(null);
 
   const { data: res, loading: resLoading } = useResponse({ limit: 1, id });
-  const { data, loading, next } = useSelector({ limit: 3 });
+  const { data, loading, next } = useSelector({ limit: 10 });
 
   return (
     <Layout sidebar={<Sidebar data={data} handleClick={setId} />}>

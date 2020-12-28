@@ -38,11 +38,14 @@ function usePagination<T>({
   let [canFetchMore, setFetchMore] = useState(true);
   let {
     data, loading, error,
-  } = useFetch<Wrapped<T>>({ input: managedInput, init, runOnMount: true });
+  } = useFetch<Wrapped<T>>({
+    input: managedInput, init, runOnMount: true, runOnNullParams: false,
+  });
 
   useEffect(() => {
     if (error === null && loading === false && data) {
-      if (data.skip !== page * limit) {
+      let alreadySaved = paginatedData.some(i => i.skip === data?.skip);
+      if (data.skip !== page * limit || alreadySaved) {
         return;
       }
       if (data.count < limit) {
