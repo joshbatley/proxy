@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouteMatch } from 'react-router-dom';
 import { Collections } from 'types';
 
 type Props = {
@@ -37,7 +38,9 @@ const CollectionBtn: React.FC<BtnProps> = ({
 );
 
 const Collection: React.FC<Props> = ({ data, children }) => {
-  let [isOpen, setOpen] = useState<boolean>(false);
+  let matched = useRouteMatch<{ collection: string }>('/:collection/:endpoint');
+  let collection = matched?.params.collection;
+  let [isOpen, setOpen] = useState<boolean>(data.id === collection);
 
   function toggle() {
     setOpen(!isOpen);

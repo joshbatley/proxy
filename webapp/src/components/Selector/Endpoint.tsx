@@ -1,36 +1,40 @@
 import React from 'react';
 import MethodTag from 'components/MethodTag';
+import { NavLink } from 'react-router-dom';
 import Portal from 'components/Portal';
 import type { Endpoint } from 'types';
 
-interface BaseProps extends React.ComponentPropsWithoutRef<'div'> {
+interface BaseProps extends React.ComponentPropsWithoutRef<'a'> {
   data: Endpoint
   truncate?: boolean;
 }
 
-let baseClasses = 'hover:shadow py-1.5 px-2 cursor-pointer leading-normal flex content-center flex-auto text-sm hover:bg-gray-100 rounded-l text-gray-700';
+let baseClasses = 'hover:shadow py-1.5 px-2 cursor-pointer leading-normal flex content-center flex-auto text-sm hover:bg-gray-50 rounded-l text-gray-700';
 
 const BaseEnd: React.FC<BaseProps> = ({
   className, truncate, data, ...other
 }) => (
-  <div
+  <NavLink
+    to={`/${data.collectionId}/${data.id}`}
     className={`${baseClasses} ${className}`}
+    activeClassName="bg-gray-100 hover:bg-gray-100"
     {...other}
   >
-    <MethodTag method={data.method} />
-    <span className={`leading-5 ${truncate ? 'truncate' : 'whitespace-nowrap overflow-clip'}`}>{data.url}</span>
-  </div>
+    <>
+      <MethodTag method={data.method} />
+      <span className={`leading-5 ${truncate ? 'truncate' : 'whitespace-nowrap overflow-clip'}`}>{data.url}</span>
+    </>
+  </NavLink>
 );
 
 type Props = {
   data: Endpoint;
-  handleClick: (id: string) => void;
 };
 
-const EndpointLink: React.FC<Props> = ({ data, handleClick }) => {
+const EndpointLink: React.FC<Props> = ({ data }) => {
   let [showTooltip, setTooltip] = React.useState<{x: number, y: number} | null>(null);
 
-  function hover(e: React.MouseEvent<HTMLDivElement>) {
+  function hover(e: React.MouseEvent<HTMLAnchorElement>) {
     let text = e.currentTarget.lastElementChild!;
     let target = e.currentTarget;
 
@@ -50,7 +54,7 @@ const EndpointLink: React.FC<Props> = ({ data, handleClick }) => {
         <Portal>
           <BaseEnd
             data={data}
-            className="bg-gray-100 shadow rounded absolute pointer-events-none z-5 "
+            className="bg-gray-50 shadow rounded absolute pointer-events-none z-5 "
             style={{
               top: showTooltip.y,
               left: showTooltip.x,
@@ -62,7 +66,6 @@ const EndpointLink: React.FC<Props> = ({ data, handleClick }) => {
         data={data}
         className={`z-10 relative ${showTooltip && 'hover:shadow-none'}`}
         truncate={!showTooltip}
-        onClick={() => handleClick(data.id)}
         onMouseOver={hover}
         onMouseLeave={() => setTooltip(null)}
       />

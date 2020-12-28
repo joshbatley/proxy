@@ -13,10 +13,11 @@ import (
 )
 
 type Endpoint struct {
-	ID     uuid.UUID `json:"id"`
-	Status int       `json:"status"`
-	Method string    `json:"method"`
-	URL    string    `json:"url"`
+	ID           uuid.UUID `json:"id"`
+	Status       int       `json:"status"`
+	Method       string    `json:"method"`
+	URL          string    `json:"url"`
+	CollectionID string    `json:"collectionId"`
 }
 
 // Handler -
@@ -50,7 +51,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		data = append(data, Endpoint(e))
 	}
 
-	utils.Response(w, data, skip, limit)
+	utils.Response(w, data, limit, skip)
 }
 
 func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {

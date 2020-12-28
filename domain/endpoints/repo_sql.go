@@ -56,7 +56,7 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 func (r *SQLRepo) GetByColID(id int64) (*[]Endpoint, error) {
 	e := []Endpoint{}
 	err := r.db.Select(&e, `
-		SELECT ID, PreferedStatus, Method, URL FROM Endpoints WHERE CollectionID=?
+		SELECT ID, PreferedStatus, Method, URL, CollectionID FROM Endpoints WHERE CollectionID=?
 	`, id)
 
 	if err != nil {

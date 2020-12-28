@@ -63,6 +63,6 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 		})
 	}
 
-	utils.Response(w, d, skip, limit)
+	utils.Response(w, d, limit, skip)
 
 }

@@ -9,6 +9,7 @@ export type Endpoint = {
   status: number;
   url: string;
   method: string;
+  collectionId: string;
 };
 
 export type Response = {

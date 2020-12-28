@@ -58,5 +58,5 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 			RemapRegex:   r.RemapRegex,
 		})
 	}
-	utils.Response(w, data, skip, limit)
+	utils.Response(w, data, limit, skip)
 }
