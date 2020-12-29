@@ -71,11 +71,11 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q.cacheResponse(w, cache, engine, startTime)
+	q.sendCachedResponse(w, cache, engine, startTime)
 	return
 }
 
-func (q *Handler) cacheResponse(w http.ResponseWriter, cache *response, engine *engine.RuleEngine, startTime time.Time) {
+func (q *Handler) sendCachedResponse(w http.ResponseWriter, cache *response, engine *engine.RuleEngine, startTime time.Time) {
 	for _, i := range strings.Split(cache.headers, "\n") {
 		h := strings.Split(i, "|")
 		if len(h) >= 2 {

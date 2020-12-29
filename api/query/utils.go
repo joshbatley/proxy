@@ -52,25 +52,34 @@ func (q *Handler) checkResponses(
 ) (ids, *response, error) {
 	found := ids{endpoint: uuid.Nil, id: uuid.Nil}
 
-	endpoint, err := q.endpoints.GetOrCreate(params.QueryURL.String(), r.Method, params.Collection)
-	if err != nil {
+	endpoint, err := q.endpoints.Get(params.QueryURL.String(), r.Method, params.Collection)
+	if err != nil && err != fail.ErrNoData {
 		return found, nil, err
+	}
+	if err == fail.ErrNoData {
+		q.log.Info("New request, creating record and proxying", params.QueryURL)
+		endpointID, err := q.endpoints.Save(params.QueryURL.String(), r.Method, params.Collection)
+		if err != nil {
+			return found, nil, err
+		}
+		found.endpoint = endpointID
+		return found, nil, nil
 	}
 
 	res, err := q.responses.Get(
 		params.QueryURL.String(),
-		endpoint,
+		endpoint.ID,
 		r.Method,
+		endpoint.Status,
 	)
+
 	if err != nil && err != fail.ErrNoData {
 		return found, nil, err
 	}
 
 	if err == fail.ErrNoData || res == nil {
-		q.log.Info("No data found proxy request")
-		found.endpoint = endpoint
-		return found, nil, nil
-
+		q.log.Info("No response found, data is wrong")
+		return found, nil, fail.ResponseMissing(err)
 	}
 
 	if !engine.HasExpired(res.DateTime) {
@@ -84,7 +93,7 @@ func (q *Handler) checkResponses(
 
 	q.log.Info("Response has expired - refresh data")
 	return ids{
-		endpoint: endpoint, id: res.ID,
+		endpoint: endpoint.ID, id: res.ID,
 	}, nil, nil
 }
 

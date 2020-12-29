@@ -39,13 +39,13 @@ func (r *SQLRepo) ListByEndpoint(endpoint string, limit int, skip int) ([]Respon
 }
 
 // Get return all response where url and collection
-func (r *SQLRepo) Get(url string, endpoint uuid.UUID, method string) (*Response, error) {
+func (r *SQLRepo) Get(url string, endpoint uuid.UUID, method string, status int) (*Response, error) {
 	d := Response{}
 	err := r.db.QueryRowx(`
 		SELECT ID, Body, Status, Headers, URL, DateTime
 		FROM Responses
-		WHERE URL=? AND EndpointId=? AND Method=?
-	`, url, endpoint, method).StructScan(&d)
+		WHERE URL=? AND EndpointId=? AND Method=? AND Status=?
+	`, url, endpoint, method, status).StructScan(&d)
 
 	if err == sql.ErrNoRows {
 		return nil, fail.ErrNoData

@@ -2,7 +2,6 @@ package endpoints
 
 import (
 	"github.com/google/uuid"
-	"github.com/joshbatley/proxy/internal/fail"
 )
 
 // Endpoint returns a single endpoint
@@ -58,22 +57,4 @@ func (m *Manager) GetByID(id uuid.UUID) ([]Endpoint, error) {
 // Save -
 func (m *Manager) Save(url string, method string, col int64) (uuid.UUID, error) {
 	return m.repo.Save(url, method, col)
-}
-
-// GetOrCreate a endpoint, return the found or created ID
-func (m *Manager) GetOrCreate(url string, method string, col int64) (uuid.UUID, error) {
-	endpoint, err := m.Get(url, method, col)
-	if err != nil && err != fail.ErrNoData {
-		return uuid.Nil, err
-	}
-
-	if err == fail.ErrNoData {
-		id, err := m.Save(url, method, col)
-		if err != nil {
-			return uuid.Nil, err
-		}
-		return id, nil
-	}
-	return endpoint.ID, nil
-
 }

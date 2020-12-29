@@ -5,9 +5,9 @@ type Props = {
 };
 
 const Layout: React.FC<Props> = ({ children, sidebar }) => (
-  <div className="flex h-full">
-    <div className="w-1/2 sm:w-1/3 md:w-1/4 xl:w-1/5 h-auto overflow-hidden border-r flex-shrink-0">{sidebar}</div>
-    <div className="max-h-full flex-auto flex-grow-0 w-auto">
+  <div className="h-full w-screen grid grid-cols-4">
+    <div className="h-auto border-r col-span-2 sm:col-span-1">{sidebar}</div>
+    <div className="max-h-full col-span-2 sm:col-span-3 p-3">
       {children}
     </div>
   </div>

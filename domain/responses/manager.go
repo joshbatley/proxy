@@ -17,7 +17,7 @@ type Response struct {
 
 // Repository -
 type Repository interface {
-	Get(url string, endpoint uuid.UUID, method string) (*Response, error)
+	Get(url string, endpoint uuid.UUID, method string, status int) (*Response, error)
 	ListByEndpoint(endpoint string, limit int, skip int) ([]Response, error)
 	Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error
 	Delete(id uuid.UUID) error
@@ -36,8 +36,8 @@ func NewManager(r Repository) *Manager {
 }
 
 // Get -
-func (m *Manager) Get(url string, endpoint uuid.UUID, method string) (*Response, error) {
-	return m.repo.Get(url, endpoint, method)
+func (m *Manager) Get(url string, endpoint uuid.UUID, method string, status int) (*Response, error) {
+	return m.repo.Get(url, endpoint, method, status)
 }
 
 // ListByEndpoint -

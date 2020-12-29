@@ -14,10 +14,10 @@ type data struct {
 	ID       uuid.UUID `json:"id"`
 	Status   int       `json:"status"`
 	URL      string    `json:"url"`
-	Method   string    `json:"method"`
-	Headers  string    `json:"headers"`
-	Body     string    `json:"body"`
-	DateTime int64     `json:"datetime"`
+	Method   string    `json:"method,omitempty"`
+	Headers  string    `json:"headers,omitempty"`
+	Body     string    `json:"body,omitempty"`
+	DateTime int64     `json:"datetime,omitempty"`
 }
 
 // Handler Http handler for any query response
@@ -53,13 +53,9 @@ func (h *Handler) Get(w http.ResponseWriter, re *http.Request) {
 	d := []data{}
 	for _, r := range rs {
 		d = append(d, data{
-			ID:       r.ID,
-			Status:   r.Status,
-			URL:      r.URL,
-			Method:   r.Method,
-			Headers:  r.Headers,
-			Body:     string(r.Body),
-			DateTime: r.DateTime,
+			ID:     r.ID,
+			Status: r.Status,
+			URL:    r.URL,
 		})
 	}
 

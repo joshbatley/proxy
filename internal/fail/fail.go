@@ -27,6 +27,8 @@ var (
 	ErrNoData code = errors.New("no_data")
 	// ErrOffline when no internet connection found
 	ErrOffline code = errors.New("no_connection_found")
+	// ErrResponse when no response found
+	ErrResponse code = errors.New("no_response_found")
 )
 
 func (e *Error) Error() string {
@@ -81,5 +83,14 @@ func OfflineError(err error) error {
 		Inner:   err,
 		Code:    ErrOffline,
 		Message: "Check you internet connection",
+	}
+}
+
+// ResponseMissing returns a unexpected error
+func ResponseMissing(err error) error {
+	return &Error{
+		Inner:   err,
+		Code:    ErrResponse,
+		Message: "Response not found, check preferred status type on endpoint",
 	}
 }

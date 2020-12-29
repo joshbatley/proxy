@@ -11,16 +11,14 @@ const Response: React.FC = () => {
   }
 
   return (
-    <div>
-      <header className="App-header">
-        <div>Response</div>
-        {data && data.map(d => (
-          d.data.map((r) => Object.entries(r).map(([k, v]) => (
-            <div key={k}><b>{k}:</b>{v}</div>
-          )))
-        ))}
-      </header>
-    </div>
+    <>
+      <div>Response</div>
+      {data && data.map(d => (
+        d.data.map((r) => Object.entries(r).map(([k, v]) => (
+          <p key={k} className="break-words"><b>{k}:</b>{v}</p>
+        )))
+      ))}
+    </>
   );
 };
 
