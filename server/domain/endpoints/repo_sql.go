@@ -8,7 +8,7 @@ import (
 	"github.com/joshbatley/proxy/server/internal/fail"
 )
 
-// SQLRepo -
+// SQLRepo requires DB
 type SQLRepo struct {
 	db *sqlx.DB
 }
@@ -20,7 +20,7 @@ func NewSQLRepository(db *sqlx.DB) *SQLRepo {
 	}
 }
 
-// List -
+// List returns paginated response for endpoints
 func (r *SQLRepo) List(limit int, skip int) ([]Endpoint, error) {
 	cols := []Endpoint{}
 	err := r.db.Select(&cols, `
@@ -32,7 +32,7 @@ func (r *SQLRepo) List(limit int, skip int) ([]Endpoint, error) {
 	return cols, nil
 }
 
-// Get -
+// Get return all response by url, collection, method
 func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 	e := Endpoint{}
 	err := r.db.QueryRowx(`
@@ -52,8 +52,8 @@ func (r *SQLRepo) Get(url string, method string, col int64) (*Endpoint, error) {
 	return &e, nil
 }
 
-// GetByColID -
-func (r *SQLRepo) GetByColID(id int64) (*[]Endpoint, error) {
+// GetByCollectionID return all response by collection ID
+func (r *SQLRepo) GetByCollectionID(id int64) (*[]Endpoint, error) {
 	e := []Endpoint{}
 	err := r.db.Select(&e, `
 		SELECT ID, PreferedStatus, Method, URL, CollectionID FROM Endpoints WHERE CollectionID=?
@@ -66,7 +66,7 @@ func (r *SQLRepo) GetByColID(id int64) (*[]Endpoint, error) {
 	return &e, nil
 }
 
-// GetByID -
+// GetByID return all response by ID
 func (r *SQLRepo) GetByID(id uuid.UUID) (*Endpoint, error) {
 	e := Endpoint{}
 	row := r.db.QueryRowx(`
@@ -81,7 +81,7 @@ func (r *SQLRepo) GetByID(id uuid.UUID) (*Endpoint, error) {
 	return &e, nil
 }
 
-// Save -
+// Save new endpoint
 func (r *SQLRepo) Save(url string, method string, col int64) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := r.db.Exec(`

@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Endpoint json response type
 type Endpoint struct {
 	ID           uuid.UUID `json:"id"`
 	Status       int       `json:"status"`
@@ -20,13 +21,13 @@ type Endpoint struct {
 	CollectionID string    `json:"collectionId"`
 }
 
-// Handler -
+// Handler requires endpoint and logger
 type Handler struct {
 	endpoints *endpoints.Manager
 	log       *zap.SugaredLogger
 }
 
-// NewHandler - Construct a new Handler
+// NewHandler construct a new Handler
 func NewHandler(endpoints *endpoints.Manager, log *zap.SugaredLogger,
 ) Handler {
 	return Handler{
@@ -35,6 +36,7 @@ func NewHandler(endpoints *endpoints.Manager, log *zap.SugaredLogger,
 	}
 }
 
+// Get all endpoints
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
@@ -51,10 +53,11 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		data = append(data, Endpoint(e))
 	}
 
-	utils.Response(w, data, limit, skip)
+	utils.PaginatedWrap(w, data, limit, skip)
 }
 
-func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
+// GetByID returns all endpoints by ID
+func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	es, err := h.endpoints.GetByID(id)

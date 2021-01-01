@@ -19,13 +19,13 @@ type rule struct {
 	RemapRegex   string `json:"remapRegex"`
 }
 
-// Handler -
+// Handler Http handler for any query response
 type Handler struct {
 	rules *rules.Manager
 	log   *zap.SugaredLogger
 }
 
-// NewHandler - Construct a new Handler
+// NewHandler construct a new Handler
 func NewHandler(rules *rules.Manager, log *zap.SugaredLogger,
 ) Handler {
 	return Handler{
@@ -34,6 +34,7 @@ func NewHandler(rules *rules.Manager, log *zap.SugaredLogger,
 	}
 }
 
+// Get all by response by collection ID
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
@@ -58,5 +59,5 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 			RemapRegex:   r.RemapRegex,
 		})
 	}
-	utils.Response(w, data, limit, skip)
+	utils.PaginatedWrap(w, data, limit, skip)
 }

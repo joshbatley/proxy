@@ -15,37 +15,36 @@ type Response struct {
 	DateTime int64  `db:"DateTime"`
 }
 
-// Repository -
-type Repository interface {
+type repository interface {
 	Get(url string, endpoint uuid.UUID, method string, status int) (*Response, error)
 	ListByEndpoint(endpoint uuid.UUID, limit int, skip int) ([]Response, error)
 	Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error
 	Delete(id uuid.UUID) error
 }
 
-// Manager -
+// Manager requires repo
 type Manager struct {
-	repo Repository
+	repo repository
 }
 
 //NewManager create new manager
-func NewManager(r Repository) *Manager {
+func NewManager(r repository) *Manager {
 	return &Manager{
 		repo: r,
 	}
 }
 
-// Get -
+// Get return all response by url, endpoint, method and status
 func (m *Manager) Get(url string, endpoint uuid.UUID, method string, status int) (*Response, error) {
 	return m.repo.Get(url, endpoint, method, status)
 }
 
-// ListByEndpoint -
+// ListByEndpoint returns paginated response by endpoint
 func (m *Manager) ListByEndpoint(endpoint uuid.UUID, limit int, skip int) ([]Response, error) {
 	return m.repo.ListByEndpoint(endpoint, limit, skip)
 }
 
-// Save -
+// Save the proxy request to the DB
 func (m *Manager) Save(
 	id uuid.UUID, url string, head string, body []byte, status int, method string, endpointID uuid.UUID,
 ) error {
@@ -56,7 +55,7 @@ func (m *Manager) Save(
 	return m.repo.Save(id, url, head, body, status, method, endpointID)
 }
 
-// Delete -
+// Delete one required by ID
 func (m *Manager) Delete(id uuid.UUID) error {
 	return m.repo.Delete(id)
 }

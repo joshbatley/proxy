@@ -15,6 +15,7 @@ type repository interface {
 	Save(name string) (*Collection, error)
 }
 
+// Manager requires repo
 type Manager struct {
 	repo repository
 }
@@ -26,14 +27,17 @@ func NewManager(r repository) *Manager {
 	}
 }
 
+// List returns paginated response for Collection
 func (m *Manager) List(limit int, skip int) ([]Collection, error) {
 	return m.repo.List(limit, skip)
 }
 
+// Get collection by id
 func (m *Manager) Get(id int64) (*Collection, error) {
 	return m.repo.Get(id)
 }
 
+// Save new Collection
 func (m *Manager) Save(name string) (*Collection, error) {
 	return m.repo.Save(name)
 }

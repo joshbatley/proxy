@@ -98,7 +98,7 @@ func (q *Handler) checkResponses(
 }
 
 func reverseProxy(
-	w http.ResponseWriter, r *http.Request, p *params.Params, mr ModifyRsponse, logger *zap.SugaredLogger,
+	w http.ResponseWriter, r *http.Request, p *params.Params, mr ModifyResponse, logger *zap.SugaredLogger,
 ) {
 	director := func(req *http.Request) {
 		req.Header.Del("Origin")

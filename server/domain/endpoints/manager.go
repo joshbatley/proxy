@@ -13,48 +13,47 @@ type Endpoint struct {
 	CollectionID string    `db:"CollectionID"`
 }
 
-// Repository -
-type Repository interface {
+type repository interface {
 	Get(url string, method string, col int64) (*Endpoint, error)
-	GetByColID(id int64) (*[]Endpoint, error)
+	GetByCollectionID(id int64) (*[]Endpoint, error)
 	GetByID(id uuid.UUID) (*Endpoint, error)
 	Save(url string, method string, col int64) (uuid.UUID, error)
 	List(limit int, skip int) ([]Endpoint, error)
 }
 
-// Manager -
+// Manager requires repo
 type Manager struct {
-	repo Repository
+	repo repository
 }
 
 //NewManager create new manager
-func NewManager(r Repository) *Manager {
+func NewManager(r repository) *Manager {
 	return &Manager{
 		repo: r,
 	}
 }
 
-// List -
+// List returns paginated response for endpoints
 func (m *Manager) List(limit int, skip int) ([]Endpoint, error) {
 	return m.repo.List(limit, skip)
 }
 
-// Get -
+// Get return all response by url, collection, method
 func (m *Manager) Get(url string, method string, col int64) (*Endpoint, error) {
 	return m.repo.Get(url, method, col)
 }
 
-// GetByColID -
-func (m *Manager) GetByColID(id int64) (*[]Endpoint, error) {
-	return m.repo.GetByColID(id)
+// GetByCollectionID return all response by collection ID
+func (m *Manager) GetByCollectionID(id int64) (*[]Endpoint, error) {
+	return m.repo.GetByCollectionID(id)
 }
 
-// GetByID -
+// GetByID return all response by ID
 func (m *Manager) GetByID(id uuid.UUID) (*Endpoint, error) {
 	return m.repo.GetByID(id)
 }
 
-// Save -
+// Save new endpoint
 func (m *Manager) Save(url string, method string, col int64) (uuid.UUID, error) {
 	return m.repo.Save(url, method, col)
 }

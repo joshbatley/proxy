@@ -18,10 +18,10 @@ import (
 	"github.com/joshbatley/proxy/server/internal/utils"
 )
 
-// ModifyRsponse -
-type ModifyRsponse func(re *http.Response) error
+// ModifyResponse required stuct
+type ModifyResponse func(re *http.Response) error
 
-// Serve Sets up all the logic for a reverse proxy and save and sends cached versions
+// ServeHTTP sets up all the logic for a reverse proxy and save and sends cached versions
 func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	params, err := params.Parse(mux.Vars(r), r.URL)

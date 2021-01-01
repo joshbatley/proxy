@@ -17,14 +17,14 @@ type collection struct {
 	Endpoints []endpoint.Endpoint `json:"endpoints,omitempty"`
 }
 
-// Handler -
+// Handler requires collections, endpoints and logger
 type Handler struct {
 	collections *collections.Manager
 	endpoints   *endpoints.Manager
 	log         *zap.SugaredLogger
 }
 
-// NewHandler - Construct a new Handler
+// NewHandler construct a new Handler
 func NewHandler(collections *collections.Manager, endpoints *endpoints.Manager, log *zap.SugaredLogger,
 ) Handler {
 	return Handler{
@@ -34,7 +34,8 @@ func NewHandler(collections *collections.Manager, endpoints *endpoints.Manager, 
 	}
 }
 
-func (h *Handler) Collections(w http.ResponseWriter, r *http.Request) {
+// GetCollections returns all collection with pagination
+func (h *Handler) GetCollections(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Query()
 	skip, _ := strconv.Atoi(p.Get("skip"))
 	limit, _ := strconv.Atoi(p.Get("limit"))
@@ -47,7 +48,7 @@ func (h *Handler) Collections(w http.ResponseWriter, r *http.Request) {
 
 	data := []collection{}
 	for _, v := range cs {
-		d, err := h.endpoints.GetByColID(v.ID)
+		d, err := h.endpoints.GetByCollectionID(v.ID)
 		if err != nil {
 			utils.BadRequest(err, w)
 			return
@@ -65,5 +66,5 @@ func (h *Handler) Collections(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	utils.Response(w, data, limit, skip)
+	utils.PaginatedWrap(w, data, limit, skip)
 }

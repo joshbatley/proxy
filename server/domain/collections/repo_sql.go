@@ -7,6 +7,7 @@ import (
 	"github.com/joshbatley/proxy/server/internal/fail"
 )
 
+// SQLRepo requires DB
 type SQLRepo struct {
 	db *sqlx.DB
 }
@@ -18,7 +19,7 @@ func NewSQLRepository(db *sqlx.DB) *SQLRepo {
 	}
 }
 
-// List -
+// List returns paginated response for Collection
 func (r *SQLRepo) List(limit int, skip int) ([]Collection, error) {
 	cols := []Collection{}
 	err := r.db.Select(&cols, `
@@ -30,7 +31,7 @@ func (r *SQLRepo) List(limit int, skip int) ([]Collection, error) {
 	return cols, nil
 }
 
-// Get -
+// Get collection by id
 func (r *SQLRepo) Get(id int64) (*Collection, error) {
 	col := Collection{}
 	err := r.db.QueryRowx(`
@@ -47,7 +48,7 @@ func (r *SQLRepo) Get(id int64) (*Collection, error) {
 	return &col, nil
 }
 
-// Save -
+// Save new Collection
 func (r *SQLRepo) Save(name string) (*Collection, error) {
 	d, err := r.db.NamedExec(`
 		INSERT INTO Collections (

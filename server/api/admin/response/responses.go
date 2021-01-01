@@ -38,7 +38,7 @@ func NewHandler(
 	}
 }
 
-// Get -
+// Get all by response by endpoint ID
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	endpoint, err := uuid.Parse(vars["id"])
@@ -62,6 +62,6 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	utils.Response(w, d, limit, skip)
+	utils.PaginatedWrap(w, d, limit, skip)
 
 }

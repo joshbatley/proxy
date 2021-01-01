@@ -9,7 +9,7 @@ import (
 	"github.com/joshbatley/proxy/server/internal/fail"
 )
 
-// SQLRepo -
+// SQLRepo requires DB
 type SQLRepo struct {
 	db *sqlx.DB
 }
@@ -21,7 +21,7 @@ func NewSQLRepository(db *sqlx.DB) *SQLRepo {
 	}
 }
 
-// ListByEndpoint returns all response for Collection
+// ListByEndpoint returns paginated response by endpoint
 func (r *SQLRepo) ListByEndpoint(endpoint uuid.UUID, limit int, skip int) ([]Response, error) {
 	d := []Response{}
 	err := r.db.Select(&d, `
@@ -38,7 +38,7 @@ func (r *SQLRepo) ListByEndpoint(endpoint uuid.UUID, limit int, skip int) ([]Res
 	return d, nil
 }
 
-// Get return all response where url and collection
+// Get return all response by url, endpoint, method and status
 func (r *SQLRepo) Get(url string, endpoint uuid.UUID, method string, status int) (*Response, error) {
 	d := Response{}
 	err := r.db.QueryRowx(`
@@ -58,7 +58,7 @@ func (r *SQLRepo) Get(url string, endpoint uuid.UUID, method string, status int)
 	return &d, nil
 }
 
-// Save saves the proxy request to the DB
+// Save the proxy request to the DB
 func (r *SQLRepo) Save(id uuid.UUID, url string, h string, b []byte, st int, m string, e uuid.UUID) error {
 	_, err := r.db.NamedExec(`
 	INSERT OR REPLACE INTO Responses (
@@ -83,7 +83,7 @@ func (r *SQLRepo) Save(id uuid.UUID, url string, h string, b []byte, st int, m s
 	return nil
 }
 
-// Delete -
+// Delete one required by ID
 func (r *SQLRepo) Delete(id uuid.UUID) error {
 	_, err := r.db.Exec("DELETE FROM Responses WHERE id=?", id)
 

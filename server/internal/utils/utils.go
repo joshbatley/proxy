@@ -28,7 +28,7 @@ func BadRequest(err error, w http.ResponseWriter) {
 	w.Write(jsonString)
 }
 
-// Cors -
+// Cors sets the headers to allow all cors
 func Cors(h http.Header) {
 	h.Set("Access-Control-Allow-Origin", "*")
 	h.Set("Access-Control-Allow-Methods", "*")
@@ -42,8 +42,8 @@ type response struct {
 	Data  interface{} `json:"data"`
 }
 
-// Response -
-func Response(w http.ResponseWriter, d interface{}, l int, s int) {
+// PaginatedWrap applies a formatting for paginated requests
+func PaginatedWrap(w http.ResponseWriter, d interface{}, l int, s int) {
 	var count int
 	if reflect.TypeOf(d).Kind() == reflect.Slice {
 		count = reflect.ValueOf(d).Len()

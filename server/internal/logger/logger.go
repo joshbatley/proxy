@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Setup logger
 func Setup() *zap.SugaredLogger {
 	// writerSyncer := getLogWriter()
 	// core := zapcore.NewCore(

@@ -16,6 +16,7 @@ type repository interface {
 	ListByCollectionID(collection string, limit int, skip int) ([]Rule, error)
 }
 
+// Manager requires repo
 type Manager struct {
 	repo repository
 }
@@ -32,7 +33,7 @@ func (m *Manager) GetByCollectionID(id int64) ([]Rule, error) {
 	return m.repo.GetByCollectionID(id)
 }
 
-// ListByCollectionID -
+// ListByCollectionID paginatied request by the colleciton ID
 func (m *Manager) ListByCollectionID(collection string, limit int, skip int) ([]Rule, error) {
 	return m.repo.ListByCollectionID(collection, limit, skip)
 }

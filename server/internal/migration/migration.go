@@ -9,6 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// StartUp Applies migration to sqlite DB
 func StartUp() error {
 	db, err := sql.Open("sqlite3", "./storage.db")
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})

@@ -13,6 +13,7 @@ type Handler struct {
 	IndexPath  string
 }
 
+// ServeHTTP sets up SPA endpoint
 func (c Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// get the absolute path to prevent directory traversal
