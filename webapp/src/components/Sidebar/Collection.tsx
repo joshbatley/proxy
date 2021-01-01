@@ -1,6 +1,8 @@
+import { useRulebar } from 'contexts/RulebarManager';
 import React, { useState } from 'react';
 import { useRouteMatch } from 'react-router-dom';
 import { Collections } from 'types';
+import SettingButtons from './SettingButtons';
 
 type Props = {
   data: Collections
@@ -17,33 +19,52 @@ type BtnProps = {
   endpoints: number;
   isOpen: boolean;
   toggle: () => void;
+  openSettings: (e: React.MouseEvent) => void;
 };
 
 const CollectionBtn: React.FC<BtnProps> = ({
-  name, endpoints, isOpen, toggle,
-}) => (
-  <button
-    type="button"
-    className={`px-2 py-4 flex content-center hover:bg-gray-100 w-full ${isOpen && 'bg-gray-100 border-b '}`}
-    onClick={toggle}
-  >
-    <Chevron isOpen={isOpen} />
-    <div className="text-left">
-      <span>{name}</span>
-      <span className="text-xs text-gray-600 block">
-        {endpoints} endpoints
-      </span>
-    </div>
-  </button>
-);
+  name, endpoints, isOpen, toggle, openSettings,
+}) => {
+  let [ShowBtns, SetShowBtns] = useState(false);
+
+  return (
+    <button
+      type="button"
+      className={`pl-2 flex content-center hover:bg-gray-100 w-full ${isOpen && 'bg-gray-100 border-b '}`}
+      onClick={toggle}
+      onMouseLeave={() => SetShowBtns(false)}
+      onMouseOver={() => SetShowBtns(true)}
+      onFocus={() => SetShowBtns(true)}
+    >
+      <Chevron isOpen={isOpen} />
+      <div className="text-left py-3">
+        <span>{name}</span>
+        <span className="text-xs text-gray-600 block">
+          {endpoints} endpoints
+        </span>
+      </div>
+      {ShowBtns && <SettingButtons openSettings={openSettings} />}
+    </button>
+  );
+};
 
 const Collection: React.FC<Props> = ({ data, children }) => {
   let matched = useRouteMatch<{ collection: string }>('/:collection/:endpoint');
+  let { openModal, closeModal } = useRulebar();
   let collection = matched?.params.collection;
   let [isOpen, setOpen] = useState<boolean>(data.id === collection);
 
   function toggle() {
     setOpen(!isOpen);
+    if (isOpen) {
+      closeModal();
+    }
+  }
+
+  function openSettings(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    openModal(data.id);
   }
 
   return (
@@ -53,6 +74,7 @@ const Collection: React.FC<Props> = ({ data, children }) => {
         endpoints={data.endpoints?.length || 0}
         toggle={toggle}
         isOpen={isOpen}
+        openSettings={openSettings}
       />
       {isOpen && children}
     </div>

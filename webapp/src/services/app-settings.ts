@@ -4,4 +4,5 @@ export default ({
   selector: `${apibase}/collections/selector`,
   response: `${apibase}/responses`,
   endpoint: `${apibase}/endpoints`,
+  rules: `${apibase}/rules`,
 });

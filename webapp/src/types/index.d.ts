@@ -35,3 +35,7 @@ export type Wrapped<T> = {
   limit: number;
   data: T[];
 };
+
+export type Rule = {
+
+}
