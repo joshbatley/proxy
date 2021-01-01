@@ -22,6 +22,12 @@ export type Response = {
   datetime: number;
 }
 
+export type ResponseLite = {
+  id:  string;
+  status:  number;
+  url:  string;
+}
+
 
 export type Wrapped<T> = {
   count: number;

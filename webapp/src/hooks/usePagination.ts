@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Wrapped } from 'types';
 import useFetch from 'hooks/useFetch';
 
@@ -6,6 +6,7 @@ type UsePagination = {
   input: RequestInfo;
   init?: RequestInit;
   limit: number;
+  resetOn?: unknown[];
 };
 
 function appendParams(url: string, limit: number, page: number): string {
@@ -30,9 +31,10 @@ function formatRequest(input: RequestInfo, limit: number, page: number) {
 }
 
 function usePagination<T>({
-  input, init, limit,
+  input, init, limit, resetOn,
 }: UsePagination) {
   let [page, setPage] = useState(0);
+  let refresh = useRef<unknown[] | undefined>(undefined);
   let managedInput = formatRequest(input, limit, page);
   let [paginatedData, setPaginatedData] = useState<Wrapped<T>[]>([]);
   let [canFetchMore, setFetchMore] = useState(true);
@@ -43,6 +45,23 @@ function usePagination<T>({
   });
 
   useEffect(() => {
+    if (refresh.current === undefined) {
+      refresh.current = resetOn;
+    }
+
+    if (refresh.current !== undefined) {
+      let dataChange = refresh.current.map((v, i) => {
+        if (resetOn?.[i] !== v) {
+          return true;
+        }
+      }).every(Boolean);
+
+      if (dataChange) {
+        refresh.current = resetOn;
+        setPaginatedData([]);
+      }
+    }
+
     if (error === null && loading === false && data) {
       let alreadySaved = paginatedData.some(i => i.skip === data?.skip);
       if (data.skip !== page * limit || alreadySaved) {
@@ -53,7 +72,7 @@ function usePagination<T>({
       }
       setPaginatedData([...paginatedData, data]);
     }
-  }, [data, page, loading]);
+  }, [data, page, loading, resetOn]);
 
   return {
     loading,

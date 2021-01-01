@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 type UseFetch = {
   input: RequestInfo;
   init?: RequestInit;
-  runOnMount: boolean;
-  runOnNullParams: boolean;
+  runOnMount?: boolean;
+  runOnNullParams?: boolean;
 };
 
 function checkForNulls(url: string): boolean {

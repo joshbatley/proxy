@@ -1,15 +1,21 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"path": "webapp"
-		}
-	],
-	"settings": {
-		"typescript.tsdk": "webapp/node_modules/typescript/lib",
-		"editor.formatOnSave": true,
+  "folders": [
+    {
+      "name": "Server",
+      "path": "server"
+    },
+    {
+      "name": "Frontend",
+      "path": "webapp"
+    },
+    {
+      "name": "Root",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "typescript.tsdk": "webapp/node_modules/typescript/lib",
+    "editor.formatOnSave": true,
     "[javascript]": {
       "editor.formatOnSave": false
     },
@@ -25,5 +31,5 @@
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": true
     },
-	}
+  }
 }

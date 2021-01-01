@@ -7,7 +7,7 @@ type Props = {
 const Layout: React.FC<Props> = ({ children, sidebar }) => (
   <div className="h-full w-screen grid grid-cols-4">
     <div className="h-auto border-r col-span-2 sm:col-span-1">{sidebar}</div>
-    <div className="max-h-full col-span-2 sm:col-span-3 p-3">
+    <div className="max-h-full col-span-2 sm:col-span-3 p-3 bg-gray-50 flex">
       {children}
     </div>
   </div>

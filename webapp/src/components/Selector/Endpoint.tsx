@@ -1,5 +1,5 @@
 import React from 'react';
-import MethodTag from 'components/MethodTag';
+import MethodTag from 'components/Method';
 import { NavLink } from 'react-router-dom';
 import Portal from 'components/Portal';
 import type { Endpoint } from 'types';

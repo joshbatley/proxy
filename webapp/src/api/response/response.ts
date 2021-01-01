@@ -10,7 +10,7 @@ type Params = {
 const useResponse = ({ limit, id }: Params) => {
   let {
     data, error, loading, next,
-  } = usePagination<Response>({ input: `${routes.response}?endpoint=${id}`, limit });
+  } = usePagination<Response>({ input: `${routes.response}/${id}`, limit, resetOn: [id] });
   return {
     data, error, loading, next,
   };
