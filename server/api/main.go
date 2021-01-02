@@ -61,14 +61,19 @@ func main() {
 	adminRouter := r.PathPrefix("/admin").Subrouter()
 	a.Router(adminRouter)
 
-	r.PathPrefix("/{config:config.*}").Handler(client.Handler{
-		StaticPath: "./webapp/build",
+	r.PathPrefix("/config").Handler(client.Handler{
+		StaticPath: "../build",
 		IndexPath:  "index.html",
 	})
+	r.PathPrefix("/ping").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Info("pong")
+		w.Write([]byte("pong"))
+	})
+
 	r.PathPrefix("/{collection:[0-9]*}/{query:.*}").Handler(q)
 	r.PathPrefix("/{query:.*}").Handler(q)
 
 	log.Infof("Listing on localhosts:" + *port)
-	err = http.ListenAndServe("localhost:"+*port, r)
+	err = http.ListenAndServe(":"+*port, r)
 	log.Info(err)
 }

@@ -2,6 +2,7 @@ package migration
 
 import (
 	"database/sql"
+	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -13,9 +14,9 @@ import (
 func StartUp() error {
 	db, err := sql.Open("sqlite3", "./storage.db")
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
-
+	p, err := filepath.Abs("../migrations")
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://./migrations",
+		"file://"+p,
 		"ql", driver)
 	if err != nil {
 		return err

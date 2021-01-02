@@ -1,0 +1,7 @@
+.github/
+docs/
+node_modules/
+webapp/
+!webapp/build/
+!migrations/
+!server/
