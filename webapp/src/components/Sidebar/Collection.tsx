@@ -1,4 +1,4 @@
-import { useRulebar } from 'contexts/RulebarManager';
+import { useRulesModal } from 'contexts/RulesModalManager';
 import React, { useState } from 'react';
 import { useRouteMatch } from 'react-router-dom';
 import { Collections } from 'types';
@@ -30,7 +30,7 @@ const CollectionBtn: React.FC<BtnProps> = ({
   return (
     <button
       type="button"
-      className={`pl-2 flex content-center hover:bg-gray-100 w-full ${isOpen && 'bg-gray-100 border-b '}`}
+      className={`pl-2 flex content-center hover:bg-gray-100 w-full h-16 ${isOpen && 'bg-gray-100 border-b'}`}
       onClick={toggle}
       onMouseLeave={() => SetShowBtns(false)}
       onMouseOver={() => SetShowBtns(true)}
@@ -50,7 +50,7 @@ const CollectionBtn: React.FC<BtnProps> = ({
 
 const Collection: React.FC<Props> = ({ data, children }) => {
   let matched = useRouteMatch<{ collection: string }>('/:collection/:endpoint');
-  let { openModal, closeModal } = useRulebar();
+  let { openModal, closeModal } = useRulesModal();
   let collection = matched?.params.collection;
   let [isOpen, setOpen] = useState<boolean>(data.id === collection);
 

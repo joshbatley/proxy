@@ -6,13 +6,13 @@ type Params = {
   limit: number;
 };
 
-const useSelector = ({ limit }: Params) => {
+const useGetCollections = ({ limit }: Params) => {
   let {
     data, error, loading, next,
-  } = usePagination<Collections>({ input: routes.selector, limit });
+  } = usePagination<Collections>({ input: routes.collections, limit });
   return {
     data, error, loading, next,
   };
 };
 
-export default useSelector;
+export default useGetCollections;

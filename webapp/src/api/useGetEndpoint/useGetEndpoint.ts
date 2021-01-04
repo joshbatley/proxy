@@ -6,7 +6,7 @@ type Params = {
   id?: string | null;
 };
 
-const useEndpoint = ({ id }: Params) => {
+const useGetEndpoint = ({ id }: Params) => {
   let {
     data, error, loading,
   } = useFetch<Endpoint>({ input: `${routes.endpoint}/${id}`, runOnMount: true });
@@ -15,4 +15,4 @@ const useEndpoint = ({ id }: Params) => {
   };
 };
 
-export default useEndpoint;
+export default useGetEndpoint;

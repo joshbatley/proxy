@@ -7,13 +7,13 @@ type Params = {
   id?: string | null;
 };
 
-const useRules = ({ limit, id }: Params) => {
+const useGetResponses = ({ limit, id }: Params) => {
   let {
     data, error, loading, next,
-  } = usePagination<Response>({ input: `${routes.rules}?collection=${id}`, limit, resetOn: [id] });
+  } = usePagination<Response>({ input: `${routes.response}/${id}`, limit, resetOn: [id] });
   return {
     data, error, loading, next,
   };
 };
 
-export default useRules;
+export default useGetResponses;

@@ -9,7 +9,7 @@ interface BaseProps extends React.ComponentPropsWithoutRef<'a'> {
   truncate?: boolean;
 }
 
-let baseClasses = 'hover:shadow py-1.5 px-2 cursor-pointer leading-normal flex content-center flex-auto text-sm hover:bg-gray-50 rounded-l text-gray-700';
+let baseClasses = 'hover:shadow py-1.5 px-2 cursor-pointer leading-3 flex content-center flex-auto text-sm hover:bg-gray-50 rounded-l text-gray-700';
 
 const BaseEnd: React.FC<BaseProps> = ({
   className, truncate, data, ...other
@@ -22,7 +22,7 @@ const BaseEnd: React.FC<BaseProps> = ({
   >
     <>
       <MethodTag method={data.method} />
-      <span className={`leading-5 ${truncate ? 'truncate' : 'whitespace-nowrap overflow-clip'}`}>{data.url}</span>
+      <span className={`leading-normal ${truncate ? 'truncate' : 'whitespace-nowrap overflow-clip'}`}>{data.url}</span>
     </>
   </NavLink>
 );

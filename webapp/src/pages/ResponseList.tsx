@@ -1,14 +1,14 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import useResponse from 'api/response';
+import useGetResponses from 'api/useGetResponses';
 import StatusList from 'components/StatusList';
 import EndpointDetails from 'components/EndpointDetails';
-import useEndpoint from 'api/endpoint';
+import useGetEndpoint from 'api/useGetEndpoint';
 
 const Response: React.FC = () => {
   let { endpointId } = useParams<{ endpointId:string }>();
-  let { data: responses, loading } = useResponse({ limit: 5, id: endpointId });
-  let { data: endpoint, loading: eLoading } = useEndpoint({ id: endpointId });
+  let { data: responses, loading } = useGetResponses({ limit: 5, id: endpointId });
+  let { data: endpoint, loading: eLoading } = useGetEndpoint({ id: endpointId });
 
   // if (loading) {
   //   return <>loading</>;
@@ -17,7 +17,7 @@ const Response: React.FC = () => {
 
   return (
     <>
-      <EndpointDetails data={endpoint} />
+      {endpoint && <EndpointDetails data={endpoint} />}
       <StatusList data={responses} />
     </>
   );

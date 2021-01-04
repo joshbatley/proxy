@@ -56,12 +56,14 @@ function mapper(m: string) {
   };
 }
 
-let classes = 'min-w-min w-11 font-bold text-xxs p-1 mr-2 rounded leading-3  text-center flex-shrink-0';
-const MethodTag: React.FC<Props> = ({ method }) => {
+let classes = 'min-w-min w-11 font-bold text-xxs p-1 mr-2 rounded flex-shrink-0  flex content-center justify-center';
+const Method: React.FC<Props> = ({ method }) => {
   let mapped = mapper(method);
   return (
-    <div className={`${classes} ${mapped.color} ${mapped.bg}`}>{mapped.name}</div>
+    <div className={`${classes} ${mapped.color} ${mapped.bg} `}>
+      <span>{mapped.name}</span>
+    </div>
   );
 };
 
-export default MethodTag;
+export default Method;

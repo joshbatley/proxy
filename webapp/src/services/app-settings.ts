@@ -1,7 +1,7 @@
 const apibase = ' http://localhost:5000/admin';
 
 export default ({
-  selector: `${apibase}/collections/selector`,
+  collections: `${apibase}/collections`,
   response: `${apibase}/responses`,
   endpoint: `${apibase}/endpoints`,
   rules: `${apibase}/rules`,

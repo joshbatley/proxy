@@ -46,7 +46,7 @@ func NewHandler(
 // Router returns a new admin router
 func (h Handler) Router(r *mux.Router) {
 	cols := collection.NewHandler(h.collections, h.endpoints, h.log)
-	r.PathPrefix("/collections/selector").Methods("GET").Handler(addGzip(cols.GetCollections))
+	r.PathPrefix("/collections").Methods("GET").Handler(addGzip(cols.GetCollections))
 
 	ends := endpoint.NewHandler(h.endpoints, h.log)
 	r.PathPrefix("/endpoints/{id}").Methods("GET").Handler(addGzip(ends.GetByID))

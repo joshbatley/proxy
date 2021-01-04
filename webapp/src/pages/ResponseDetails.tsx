@@ -1,10 +1,10 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import useResponse from 'api/response';
+import useGetResponses from 'api/useGetResponses';
 
 const Response: React.FC = () => {
   let { endpoint } = useParams<{ endpoint:string }>();
-  let { data, loading } = useResponse({ limit: 5, id: endpoint });
+  let { data, loading } = useGetResponses({ limit: 5, id: endpoint });
 
   if (loading) {
     return <>loading</>;

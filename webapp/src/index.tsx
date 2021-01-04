@@ -6,7 +6,7 @@ import App from './App';
 
 ReactDOM.render(
   (
-    <BrowserRouter>
+    <BrowserRouter basename="/config">
       <App />
     </BrowserRouter>
   ),
