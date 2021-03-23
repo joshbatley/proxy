@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -21,8 +22,70 @@ import (
 // ModifyResponse required stuct
 type ModifyResponse func(re *http.Response) error
 
-// ServeHTTP sets up all the logic for a reverse proxy and save and sends cached versions
 func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	params, err := params.Parse(mux.Vars(r), r.URL)
+	// startTime := time.Now()
+	// params, err := params.Parse(mux.Vars(r), r.URL)
+	// Todo seperate the query logic and the http handler
+	// ok, cache, err := QyeryEngine()
+	// ok = just proxy
+	// cache = datafound
+	// err = badrequest
+
+	// To think about
+	// CORS request
+	// ignore saving
+	// proxy and save
+	res, err := q.QueryEngine(params, r)
+	if err != nil {
+		utils.BadRequest(err, w)
+		return
+	}
+	log.Println(res.cache)
+
+}
+
+type QueryEngineResponse struct {
+	cache     *response
+	proxyFunc func(r *http.Response) error
+}
+
+func (q Handler) QueryEngine(p *params.Params, r *http.Request) (*QueryEngineResponse, error) {
+	response := QueryEngineResponse{}
+
+	// startTime := time.Now()
+	engine, err := q.loadEngine(p)
+	if err != nil {
+		return nil, err
+	}
+
+	p.QueryURL = engine.Remapper()
+
+	if r.Method == http.MethodOptions && engine.EnableCors() {
+		q.log.Info("Force CORS response")
+		response.cache = cors()
+		return &response, nil
+	}
+
+	return nil, nil
+}
+
+func cors() *response {
+	return &response{
+		headers: "Access-Control-Allow-Origin|*\nAccess-Control-Allow-Methods|*\nAccess-Control-Allow-Headers|*",
+		body:    []byte{},
+		status:  204,
+	}
+}
+
+// func Cors(h http.Header) {
+// h.Set("Access-Control-Allow-Origin", "*")
+// h.Set("Access-Control-Allow-Methods", "*")
+// h.Set("Access-Control-Allow-Headers", "*")
+
+// ServeHTTP sets up all the logic for a reverse proxy and save and sends cached versions
+func (q Handler) QueryEngine2(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	if err != nil {
@@ -30,7 +93,6 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(err, w)
 		return
 	}
-
 	engine, err := q.loadEngine(params)
 	if err != nil {
 		q.log.Warn("Failed to load rules")
