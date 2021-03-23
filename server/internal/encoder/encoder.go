@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/andybalholm/brotli"
 )
@@ -44,13 +45,18 @@ func Decompress(h http.Header, compressedBody []byte) ([]byte, error) {
 }
 
 // Compress encodes the body from the compression passed along
-func Compress(h http.Header, body []byte) ([]byte, error) {
+func Compress(h string, body []byte) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	var compressor io.WriteCloser
 	var compressedContent []byte
 	var err error
-	encoding := h.Get("Content-Encoding")
-
+	rgx := regexp.MustCompile(`Content-Encoding\|(.*)`)
+	// encoding := h.Get("Content-Encoding")
+	encoding := ""
+	found := rgx.FindStringSubmatch(h)
+	if len(found) <= 2 {
+		encoding = found[1]
+	}
 	switch encoding {
 	case "br":
 		compressor = brotli.NewWriter(buf)

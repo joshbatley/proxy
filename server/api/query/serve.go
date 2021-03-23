@@ -8,9 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/server/internal/encoder"
 	"github.com/joshbatley/proxy/server/internal/engine"
@@ -42,8 +40,27 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(err, w)
 		return
 	}
-	log.Println(res.cache)
+	if res != nil && res.cache != nil {
+		for _, i := range strings.Split(res.cache.headers, "\n") {
+			h := strings.Split(i, "|")
+			if len(h) >= 2 {
+				w.Header().Set(h[0], h[1])
+			}
+		}
+		w.WriteHeader(res.cache.status)
+		w.Write(res.cache.body)
+		return
+	}
 
+	// if sleepTime := engine.GetSleepTime(); sleepTime > 0 {
+	//  q.log.Infof("Sleeping for %dms", sleepTime)
+	// diff := time.Since(startTime).Milliseconds()
+	// time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
+	// }
+
+	// take respone
+	// desctruct header
+	// apply to writer
 }
 
 type QueryEngineResponse struct {
@@ -68,6 +85,24 @@ func (q Handler) QueryEngine(p *params.Params, r *http.Request) (*QueryEngineRes
 		return &response, nil
 	}
 
+	ids, cache, err := q.checkResponses(p, r, engine)
+	log.Println(ids)
+	if cache != nil {
+
+		q.log.Info("Returned saved response")
+		body, err := encoder.Compress(cache.headers, cache.body)
+
+		if err != nil {
+			return nil, err
+		}
+		response.cache = cache
+		response.cache.headers = cache.headers + "x-proxy|served from cache"
+		response.cache.body = body
+		return &response, nil
+	}
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -83,82 +118,6 @@ func cors() *response {
 // h.Set("Access-Control-Allow-Origin", "*")
 // h.Set("Access-Control-Allow-Methods", "*")
 // h.Set("Access-Control-Allow-Headers", "*")
-
-// ServeHTTP sets up all the logic for a reverse proxy and save and sends cached versions
-func (q Handler) QueryEngine2(w http.ResponseWriter, r *http.Request) {
-	startTime := time.Now()
-	params, err := params.Parse(mux.Vars(r), r.URL)
-	if err != nil {
-		q.log.Error("Param parse failed")
-		utils.BadRequest(err, w)
-		return
-	}
-	engine, err := q.loadEngine(params)
-	if err != nil {
-		q.log.Warn("Failed to load rules")
-		utils.BadRequest(err, w)
-		return
-	}
-	params.QueryURL = engine.Remapper()
-
-	// Check if method is OPTIONS and if Engine need to override
-	if r.Method == http.MethodOptions && engine.EnableCors() {
-		q.log.Info("Cors request")
-		utils.Cors(w.Header())
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	// Skip Store check, and straight proxy
-	if !engine.CheckStore() {
-		q.log.Info("Skipping cache check and proxing: ", params.QueryURL)
-		reverseProxy(w, r, params, func(re *http.Response) error {
-			if engine.EnableCors() {
-				utils.Cors(re.Header)
-			}
-			return nil
-		}, q.log)
-		return
-	}
-
-	ids, cache, err := q.checkResponses(params, r, engine)
-
-	if err != nil {
-		utils.BadRequest(err, w)
-		return
-	}
-
-	if ids.endpoint != uuid.Nil || ids.id != uuid.Nil {
-		q.proxyAndSave(w, r, params, ids, engine)
-		return
-	}
-
-	q.sendCachedResponse(w, cache, engine, startTime)
-	return
-}
-
-func (q *Handler) sendCachedResponse(w http.ResponseWriter, cache *response, engine *engine.RuleEngine, startTime time.Time) {
-	for _, i := range strings.Split(cache.headers, "\n") {
-		h := strings.Split(i, "|")
-		if len(h) >= 2 {
-			w.Header().Set(h[0], h[1])
-		}
-	}
-	if sleepTime := engine.GetSleepTime(); sleepTime > 0 {
-		q.log.Infof("Sleeping for %dms", sleepTime)
-		diff := time.Since(startTime).Milliseconds()
-		time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
-	}
-	q.log.Info("Returned saved response")
-	body, err := encoder.Compress(w.Header(), cache.body)
-	if err != nil {
-		utils.BadRequest(err, w)
-		return
-	}
-	w.Header().Set("x-Proxy", "served from cache")
-	w.WriteHeader(cache.status)
-	w.Write(body)
-}
 
 func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
 	reverseProxy(w, r, p, func(re *http.Response) error {
@@ -210,3 +169,56 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 		return nil
 	}, q.log)
 }
+
+// ServeHTTP sets up all the logic for a reverse proxy and save and sends cached versions
+// func (q Handler) QueryEngine2(w http.ResponseWriter, r *http.Request) {
+// startTime := time.Now()
+// params, err := params.Parse(mux.Vars(r), r.URL)
+// if err != nil {
+// q.log.Error("Param parse failed")
+// utils.BadRequest(err, w)
+// return
+// }
+// engine, err := q.loadEngine(params)
+// if err != nil {
+// q.log.Warn("Failed to load rules")
+// utils.BadRequest(err, w)
+// return
+// }
+// params.QueryURL = engine.Remapper()
+
+// // Check if method is OPTIONS and if Engine need to override
+// if r.Method == http.MethodOptions && engine.EnableCors() {
+// q.log.Info("Cors request")
+// utils.Cors(w.Header())
+// w.WriteHeader(http.StatusNoContent)
+// return
+// }
+
+// // Skip Store check, and straight proxy
+// if !engine.CheckStore() {
+// q.log.Info("Skipping cache check and proxing: ", params.QueryURL)
+// reverseProxy(w, r, params, func(re *http.Response) error {
+// if engine.EnableCors() {
+// utils.Cors(re.Header)
+// }
+// return nil
+// }, q.log)
+// return
+// }
+
+// ids, cache, err := q.checkResponses(params, r, engine)
+
+// if err != nil {
+// utils.BadRequest(err, w)
+// return
+// }
+
+// if ids.endpoint != uuid.Nil || ids.id != uuid.Nil {
+// q.proxyAndSave(w, r, params, ids, engine)
+// return
+// }
+
+// //	q.sendCachedResponse(w, cache, engine, startTime)
+// return
+// }
