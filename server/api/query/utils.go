@@ -48,17 +48,23 @@ func (q *Handler) loadEngine(params *params.Params) (*engine.RuleEngine, error) 
 }
 
 func (q *Handler) checkResponses(
-	params *params.Params, r *http.Request, engine *engine.RuleEngine,
+	params *params.Params, method string, engine *engine.RuleEngine,
 ) (ids, *response, error) {
+	// init
 	found := ids{endpoint: uuid.Nil, id: uuid.Nil}
 
-	endpoint, err := q.endpoints.Get(params.QueryURL.String(), r.Method, params.Collection)
+	// Check for endpoint
+	endpoint, err := q.endpoints.Get(params.QueryURL.String(), method, params.Collection)
+	// Unexpected error
 	if err != nil && err != fail.ErrNoData {
 		return found, nil, err
 	}
+	// No endpoint
+	// - Create new endpoints
+	// - return new endpoint in ids or unexpected error
 	if err == fail.ErrNoData {
 		q.log.Info("New request, creating record and proxying", params.QueryURL)
-		endpointID, err := q.endpoints.Save(params.QueryURL.String(), r.Method, params.Collection)
+		endpointID, err := q.endpoints.Save(params.QueryURL.String(), method, params.Collection)
 		if err != nil {
 			return found, nil, err
 		}
@@ -66,35 +72,39 @@ func (q *Handler) checkResponses(
 		return found, nil, nil
 	}
 
+	// Endpoint is found so get reponse
 	res, err := q.responses.Get(
 		params.QueryURL.String(),
 		endpoint.ID,
-		r.Method,
+		method,
 		endpoint.Status,
 	)
 
+	// Unexpected Error
 	if err != nil && err != fail.ErrNoData {
 		return found, nil, err
 	}
 
+	// No Cache found this is probably a error
 	if err == fail.ErrNoData || res == nil {
 		q.log.Info("No response found, data is wrong")
 		return found, nil, fail.ResponseMissing(err)
 	}
 
-	if !engine.HasExpired(res.DateTime) {
-		return found, &response{
-			headers: res.Headers,
-			status:  res.Status,
-			body:    res.Body,
-		}, nil
-
+	// Data has expired so return data
+	if engine.HasExpired(res.DateTime) {
+		q.log.Info("Response has expired - refresh data")
+		return ids{
+			endpoint: endpoint.ID, id: res.ID,
+		}, nil, nil
 	}
 
-	q.log.Info("Response has expired - refresh data")
-	return ids{
-		endpoint: endpoint.ID, id: res.ID,
-	}, nil, nil
+	// data is found so return cache
+	return found, &response{
+		headers: readHeaderString(res.Headers),
+		status:  res.Status,
+		body:    res.Body,
+	}, nil
 }
 
 func reverseProxy(

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/joshbatley/proxy/server/internal/encoder"
 	"github.com/joshbatley/proxy/server/internal/engine"
@@ -21,7 +21,6 @@ import (
 type ModifyResponse func(re *http.Response) error
 
 func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
 	params, err := params.Parse(mux.Vars(r), r.URL)
 	// startTime := time.Now()
 	// params, err := params.Parse(mux.Vars(r), r.URL)
@@ -35,20 +34,22 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// CORS request
 	// ignore saving
 	// proxy and save
-	res, err := q.QueryEngine(params, r)
+	res, err := q.QueryEngine(params, r.Method)
 	if err != nil {
 		utils.BadRequest(err, w)
 		return
 	}
+
 	if res != nil && res.cache != nil {
-		for _, i := range strings.Split(res.cache.headers, "\n") {
-			h := strings.Split(i, "|")
-			if len(h) >= 2 {
-				w.Header().Set(h[0], h[1])
-			}
+		for k, v := range res.cache.headers {
+			w.Header().Add(k, v)
 		}
 		w.WriteHeader(res.cache.status)
 		w.Write(res.cache.body)
+		return
+	}
+	if res != nil && res.proxyFunc != nil {
+		reverseProxy(w, r, params, res.proxyFunc, q.log)
 		return
 	}
 
@@ -58,9 +59,6 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// time.Sleep(time.Duration(sleepTime-diff) * time.Millisecond)
 	// }
 
-	// take respone
-	// desctruct header
-	// apply to writer
 }
 
 type QueryEngineResponse struct {
@@ -68,7 +66,7 @@ type QueryEngineResponse struct {
 	proxyFunc func(r *http.Response) error
 }
 
-func (q Handler) QueryEngine(p *params.Params, r *http.Request) (*QueryEngineResponse, error) {
+func (q Handler) QueryEngine(p *params.Params, method string) (*QueryEngineResponse, error) {
 	response := QueryEngineResponse{}
 
 	// startTime := time.Now()
@@ -79,16 +77,23 @@ func (q Handler) QueryEngine(p *params.Params, r *http.Request) (*QueryEngineRes
 
 	p.QueryURL = engine.Remapper()
 
-	if r.Method == http.MethodOptions && engine.EnableCors() {
+	// Override cors request (Ignore if thirdparty API allow it or not)
+	if method == http.MethodOptions && engine.EnableCors() {
 		q.log.Info("Force CORS response")
 		response.cache = cors()
 		return &response, nil
 	}
 
-	ids, cache, err := q.checkResponses(p, r, engine)
-	log.Println(ids)
-	if cache != nil {
+	// Get Cache responses
+	ids, cache, err := q.checkResponses(p, method, engine)
 
+	// Ids exist so we can assume we need to reverseProxy
+	// TODO clean up
+	if ids.endpoint != uuid.Nil || ids.id != uuid.Nil {
+		response.proxyFunc = q.proxyAndSave(ids, engine)
+		return &response, nil
+	}
+	if cache != nil {
 		q.log.Info("Returned saved response")
 		body, err := encoder.Compress(cache.headers, cache.body)
 
@@ -96,79 +101,141 @@ func (q Handler) QueryEngine(p *params.Params, r *http.Request) (*QueryEngineRes
 			return nil, err
 		}
 		response.cache = cache
-		response.cache.headers = cache.headers + "x-proxy|served from cache"
 		response.cache.body = body
 		return &response, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+
+	// Fallthrough
 	return nil, nil
 }
 
 func cors() *response {
 	return &response{
-		headers: "Access-Control-Allow-Origin|*\nAccess-Control-Allow-Methods|*\nAccess-Control-Allow-Headers|*",
-		body:    []byte{},
-		status:  204,
+		body:   []byte{},
+		status: 204,
+		headers: map[string]string{
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Method": "*",
+			"Access-Control-Allow-Header": "*",
+		},
 	}
 }
 
-// func Cors(h http.Header) {
-// h.Set("Access-Control-Allow-Origin", "*")
-// h.Set("Access-Control-Allow-Methods", "*")
-// h.Set("Access-Control-Allow-Headers", "*")
+func readHeaderString(hs string) map[string]string {
+	n := map[string]string{}
+	for _, i := range strings.Split(hs, "\n") {
+		h := strings.Split(i, "|")
+		if len(h) >= 2 {
+			n[h[0]] = h[1]
+		}
+	}
+	return n
+}
 
-func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
-	reverseProxy(w, r, p, func(re *http.Response) error {
-		q.log.Info("Saving response for ", re.Request.URL)
+func (q *Handler) proxyAndSave(ids ids, engine *engine.RuleEngine) func(r *http.Response) error {
+	return func(r *http.Response) error {
+		q.log.Info("Saving response for ", r.Request.URL)
 
 		// Depulicate the body to reapply to response later
-		buf, _ := ioutil.ReadAll(re.Body)
+		buf, _ := ioutil.ReadAll(r.Body)
 		body := new(bytes.Buffer)
 		body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
-		re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 
-		content, err := encoder.Decompress(re.Header, body.Bytes())
+		content, err := encoder.Decompress(r.Header, body.Bytes())
 		if err != nil {
 			q.log.Info("Decoding body failed")
 			content = body.Bytes()
 		}
 
 		h := new(bytes.Buffer)
-		for k, v := range re.Header {
+		for k, v := range r.Header {
 			fmt.Fprintf(h, "%s|%s\n", k, strings.Join(v, " "))
 		}
 
 		err = q.responses.Save(
 			ids.id,
-			re.Request.URL.String(),
+			r.Request.URL.String(),
 			h.String(),
 			content,
-			re.StatusCode,
-			re.Request.Method,
+			r.StatusCode,
+			r.Request.Method,
 			ids.endpoint,
 		)
 
 		if err != nil {
 			q.log.Error("Failed to save response")
 
-			re.Header = http.Header{}
-			re.Header.Set("Content-Type", "application/json, text/plain, */*")
-			re.StatusCode = http.StatusBadRequest
+			r.Header = http.Header{}
+			r.Header.Set("Content-Type", "application/json, text/plain, */*")
+			r.StatusCode = http.StatusBadRequest
 			jsonString, _ := json.Marshal(fail.InternalError(err))
-			re.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
+			r.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
 			return nil
 		}
 
 		// Apply headers to skip inbuild security
 		if engine.EnableCors() {
-			utils.Cors(re.Header)
+			utils.Cors(r.Header)
 		}
 
 		return nil
-	}, q.log)
+	}
 }
+
+// func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
+// reverseProxy(w, r, p, func(re *http.Response) error {
+// q.log.Info("Saving response for ", re.Request.URL)
+
+// // Depulicate the body to reapply to response later
+// buf, _ := ioutil.ReadAll(re.Body)
+// body := new(bytes.Buffer)
+// body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
+// re.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+
+// content, err := encoder.Decompress(re.Header, body.Bytes())
+// if err != nil {
+// q.log.Info("Decoding body failed")
+// content = body.Bytes()
+// }
+
+// h := new(bytes.Buffer)
+// for k, v := range re.Header {
+// fmt.Fprintf(h, "%s|%s\n", k, strings.Join(v, " "))
+// }
+
+// err = q.responses.Save(
+// ids.id,
+// re.Request.URL.String(),
+// h.String(),
+// content,
+// re.StatusCode,
+// re.Request.Method,
+// ids.endpoint,
+// )
+
+// if err != nil {
+// q.log.Error("Failed to save response")
+
+// re.Header = http.Header{}
+// re.Header.Set("Content-Type", "application/json, text/plain, */*")
+// re.StatusCode = http.StatusBadRequest
+// jsonString, _ := json.Marshal(fail.InternalError(err))
+// re.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
+// return nil
+// }
+
+// // Apply headers to skip inbuild security
+// if engine.EnableCors() {
+// utils.Cors(re.Header)
+// }
+
+// return nil
+// }, q.log)
+// }
 
 // ServeHTTP sets up all the logic for a reverse proxy and save and sends cached versions
 // func (q Handler) QueryEngine2(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +286,5 @@ func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params
 // return
 // }
 
-// //	q.sendCachedResponse(w, cache, engine, startTime)
 // return
 // }

@@ -10,9 +10,9 @@ import (
 )
 
 type response struct {
-	headers string
 	status  int
 	body    []byte
+	headers map[string]string
 }
 
 type ids struct {
