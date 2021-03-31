@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/joshbatley/proxy/server/internal/connection"
 	"github.com/joshbatley/proxy/server/internal/encoder"
 	"github.com/joshbatley/proxy/server/internal/engine"
 	"github.com/joshbatley/proxy/server/internal/fail"
@@ -51,7 +52,56 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if res != nil && res.proxyFunc != nil {
-		reverseProxy(w, r, params, res.proxyFunc, q.log)
+		director := func(req *http.Request) {
+			req.Header.Del("Origin")
+			req.Header.Del("Referer")
+			req.URL.Scheme = params.QueryURL.Scheme
+			req.URL.Host = params.QueryURL.Host
+			req.URL.Path = params.QueryURL.Path
+			req.Host = params.QueryURL.Host
+			req.URL.RawQuery = params.QueryURL.RawQuery
+		}
+
+		reverseProxy := httputil.ReverseProxy{
+			Director: director,
+			ModifyResponse: func(r *http.Response) error {
+
+				buf, _ := ioutil.ReadAll(r.Body)
+				body := new(bytes.Buffer)
+				body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
+				r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+
+				err := res.proxyFunc(body.Bytes(), r.Header, r.StatusCode, r.Request.Method, r.Request.URL.String())
+
+				if err != nil {
+					q.log.Error("failed to save response")
+
+					r.Header = http.Header{}
+					r.Header.Set("content-type", "application/json, text/plain, */*")
+					r.StatusCode = http.StatusBadRequest
+					jsonstring, _ := json.Marshal(fail.InternalError(err))
+					r.Body = ioutil.NopCloser(bytes.NewBuffer(jsonstring))
+					return nil
+				}
+
+				// apply headers to skip inbuild security
+				// if engine.enablecors() {
+				// utils.cors(r.header)
+				// }
+
+				return nil
+			},
+			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+				if connection.IsOffline(nil) {
+					utils.BadRequest(fail.OfflineError(err), w)
+				} else {
+					q.log.Warn("Internal Error on reverse Proxy - ", err)
+					utils.BadRequest(fail.InternalError(err), w)
+				}
+			},
+		}
+
+		reverseProxy.ServeHTTP(w, r)
 		return
 	}
 
@@ -65,7 +115,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type QueryEngineResponse struct {
 	cache     *response
-	proxyFunc func(r *http.Response) error
+	proxyFunc func(body []byte, headers http.Header, StatusCode int, method string, url string) error
 }
 
 func (q Handler) QueryEngine(p *params.Params, method string) (*QueryEngineResponse, error) {
@@ -88,7 +138,7 @@ func (q Handler) QueryEngine(p *params.Params, method string) (*QueryEngineRespo
 
 	// If the rule is to ignore
 	if !engine.CheckStore() {
-		response.proxyFunc = func(r *http.Response) error {
+		response.proxyFunc = func(body []byte, headers http.Header, StatusCode int, method string, url string) error {
 			return nil
 		}
 		return &response, nil
@@ -153,10 +203,25 @@ func writeHeaderString(h http.Header) string {
 	return hs.String()
 }
 
-func (q *Handler) proxyAndSave2(ids ids, engine *engine.RuleEngine) func(body []byte, headers http.Header, StatusCode int, method string, url string) error {
-	return func(body []byte, headers http.Header, StatusCode int, method string, url string) error {
+func (q *Handler) proxyAndSave(ids ids, engine *engine.RuleEngine) func(body []byte, headers http.Header, StatusCode int, method string, url string) error {
+	return func(body []byte, headers http.Header, statusCode int, method string, url string) error {
+		content, err := encoder.Decompress(headers, body)
+		if err != nil {
+			q.log.Info("Decoding body failed")
+			content = body
+		}
 
-		return nil
+		h := writeHeaderString(headers)
+
+		return q.responses.Save(
+			ids.id,
+			url,
+			h,
+			content,
+			statusCode,
+			method,
+			ids.endpoint,
+		)
 	}
 }
 
@@ -167,56 +232,53 @@ func (q *Handler) proxyAndSave2(ids ids, engine *engine.RuleEngine) func(body []
 // url - string
 //
 
-func (q *Handler) proxyAndSave(ids ids, engine *engine.RuleEngine) func(r *http.Response) error {
-	return func(r *http.Response) error {
-		q.log.Info("Proxied and saving response for ", r.Request.URL)
+// func (q *Handler) proxyAndSave(ids ids, engine *engine.RuleEngine) func(r *http.Response) error {
+// return func(r *http.Response) error {
+// q.log.Info("Proxied and saving response for ", r.Request.URL)
 
-		// Depulicate the body to reapply to response later
-		buf, _ := ioutil.ReadAll(r.Body)
-		body := new(bytes.Buffer)
-		body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+// // Depulicate the body to reapply to response later
+// buf, _ := ioutil.ReadAll(r.Body)
+// body := new(bytes.Buffer)
+// body.ReadFrom(ioutil.NopCloser(bytes.NewBuffer(buf)))
+// r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 
-		content, err := encoder.Decompress(r.Header, body.Bytes())
-		if err != nil {
-			q.log.Info("Decoding body failed")
-			content = body.Bytes()
-		}
+// content, err := encoder.Decompress(r.Header, body.Bytes())
+// if err != nil {
+// q.log.Info("Decoding body failed")
+// content = body.Bytes()
+// }
 
-		h := new(bytes.Buffer)
-		for k, v := range r.Header {
-			fmt.Fprintf(h, "%s|%s\n", k, strings.Join(v, " "))
-		}
+// h := writeHeaderString(r.Header)
 
-		err = q.responses.Save(
-			ids.id,
-			r.Request.URL.String(),
-			h.String(),
-			content,
-			r.StatusCode,
-			r.Request.Method,
-			ids.endpoint,
-		)
+// err = q.responses.Save(
+// ids.id,
+// r.Request.URL.String(),
+// h,
+// content,
+// r.StatusCode,
+// r.Request.Method,
+// ids.endpoint,
+// )
 
-		if err != nil {
-			q.log.Error("Failed to save response")
+// if err != nil {
+// q.log.error("failed to save response")
 
-			r.Header = http.Header{}
-			r.Header.Set("Content-Type", "application/json, text/plain, */*")
-			r.StatusCode = http.StatusBadRequest
-			jsonString, _ := json.Marshal(fail.InternalError(err))
-			r.Body = ioutil.NopCloser(bytes.NewBuffer(jsonString))
-			return nil
-		}
+// r.header = http.header{}
+// r.header.set("content-type", "application/json, text/plain, */*")
+// r.statuscode = http.statusbadrequest
+// jsonstring, _ := json.marshal(fail.internalerror(err))
+// r.body = ioutil.nopcloser(bytes.newbuffer(jsonstring))
+// return nil
+// }
 
-		// Apply headers to skip inbuild security
-		if engine.EnableCors() {
-			utils.Cors(r.Header)
-		}
+// // apply headers to skip inbuild security
+// if engine.enablecors() {
+// utils.cors(r.header)
+// }
 
-		return nil
-	}
-}
+// return nil
+// }
+// }
 
 // func (q *Handler) proxyAndSave(w http.ResponseWriter, r *http.Request, p *params.Params, ids ids, engine *engine.RuleEngine) {
 // reverseProxy(w, r, p, func(re *http.Response) error {

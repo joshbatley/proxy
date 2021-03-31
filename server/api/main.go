@@ -74,6 +74,6 @@ func main() {
 	r.PathPrefix("/{query:.*}").Handler(q)
 
 	log.Infof("Listing on localhosts:" + *port)
-	err = http.ListenAndServe("127.0.0.1:"+*port, r)
+	err = http.ListenAndServe(":"+*port, r)
 	log.Info(err)
 }
