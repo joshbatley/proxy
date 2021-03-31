@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 
@@ -48,6 +49,7 @@ func (q Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write(res.cache.body)
 		return
 	}
+
 	if res != nil && res.proxyFunc != nil {
 		reverseProxy(w, r, params, res.proxyFunc, q.log)
 		return
@@ -81,6 +83,14 @@ func (q Handler) QueryEngine(p *params.Params, method string) (*QueryEngineRespo
 	if method == http.MethodOptions && engine.EnableCors() {
 		q.log.Info("Force CORS response")
 		response.cache = cors()
+		return &response, nil
+	}
+
+	// If the rule is to ignore
+	if !engine.CheckStore() {
+		response.proxyFunc = func(r *http.Response) error {
+			return nil
+		}
 		return &response, nil
 	}
 
@@ -135,9 +145,31 @@ func readHeaderString(hs string) map[string]string {
 	return n
 }
 
+func writeHeaderString(h http.Header) string {
+	hs := new(bytes.Buffer)
+	for k, v := range h {
+		fmt.Fprintf(hs, "%s|%s\n", k, strings.Join(v, " "))
+	}
+	return hs.String()
+}
+
+func (q *Handler) proxyAndSave2(ids ids, engine *engine.RuleEngine) func(body []byte, headers http.Header, StatusCode int, method string, url string) error {
+	return func(body []byte, headers http.Header, StatusCode int, method string, url string) error {
+
+		return nil
+	}
+}
+
+// body - bytes
+// headers
+// statusCode
+// method
+// url - string
+//
+
 func (q *Handler) proxyAndSave(ids ids, engine *engine.RuleEngine) func(r *http.Response) error {
 	return func(r *http.Response) error {
-		q.log.Info("Saving response for ", r.Request.URL)
+		q.log.Info("Proxied and saving response for ", r.Request.URL)
 
 		// Depulicate the body to reapply to response later
 		buf, _ := ioutil.ReadAll(r.Body)
